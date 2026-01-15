@@ -1,9 +1,31 @@
 import { EventEmitter } from 'node:events';
+import { execFile } from 'node:child_process';
+import { readlink } from 'node:fs/promises';
 import type { IPty } from 'node-pty';
 import type { SessionSpec, SessionSummary } from '@shared/protocol';
 import { RingBuffer } from './ring-buffer';
 
 const SCROLLBACK_LINES = 10_000;
+const CWD_POLL_MS = 1500;
+
+// Resolve the *actual* working directory of a running process. Most shells
+// don't emit OSC 7, so we can't rely on terminal escapes alone — instead we
+// ask the OS for the shell pid's cwd. macOS: lsof; Linux: /proc; Windows: n/a.
+function queryProcessCwd(pid: number): Promise<string | null> {
+  if (process.platform === 'darwin') {
+    return new Promise((resolve) => {
+      execFile('lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn'], (err, stdout) => {
+        if (err) return resolve(null);
+        const line = stdout.split('\n').find((l) => l.startsWith('n'));
+        resolve(line ? line.slice(1).trim() || null : null);
+      });
+    });
+  }
+  if (process.platform === 'linux') {
+    return readlink(`/proc/${pid}/cwd`).then((p) => p || null).catch(() => null);
+  }
+  return Promise.resolve(null);
+}
 
 export class Session extends EventEmitter {
   readonly id: string;
@@ -12,6 +34,7 @@ export class Session extends EventEmitter {
   private buffer = new RingBuffer<string>(SCROLLBACK_LINES);
   private currentLine = '';
   private alive = false;
+  private cwdTimer: NodeJS.Timeout | null = null;
   // Lazy PTY spawn: we don't fork the shell until a client attaches. This
   // guarantees the renderer has registered its data-event listener BEFORE
   // any PTY output exists, so the startup prompt arrives via live events
@@ -54,8 +77,29 @@ export class Session extends EventEmitter {
     });
     proc.onExit(({ exitCode, signal }) => {
       this.alive = false;
+      this.stopCwdPolling();
       this.emit('exit', exitCode ?? null, signal ? String(signal) : null);
     });
+    this.startCwdPolling(proc.pid);
+  }
+
+  private startCwdPolling(pid: number): void {
+    const poll = async (): Promise<void> => {
+      const cwd = await queryProcessCwd(pid);
+      if (cwd && cwd !== this.spec.cwd) {
+        this.spec = { ...this.spec, cwd };
+        this.emit('cwd', cwd);
+      }
+    };
+    void poll();
+    this.cwdTimer = setInterval(() => void poll(), CWD_POLL_MS);
+  }
+
+  private stopCwdPolling(): void {
+    if (this.cwdTimer) {
+      clearInterval(this.cwdTimer);
+      this.cwdTimer = null;
+    }
   }
 
   private absorb(chunk: string): void {
@@ -93,6 +137,7 @@ export class Session extends EventEmitter {
   }
 
   kill(): void {
+    this.stopCwdPolling();
     try {
       this.pty?.kill();
     } catch {
