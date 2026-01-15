@@ -1,8 +1,14 @@
 import { BrowserWindow, type IpcMain } from 'electron';
 import { ensureDaemon, getClient } from '../daemon-supervisor';
+import type { DaemonClient } from '../daemon-client';
 import type { DaemonEvent, DaemonRequest, SessionId } from '@shared/protocol';
 
-let listenerInstalled = false;
+// The client instance we've attached the event forwarder to. ensureDaemon()
+// can hand back a *new* client after a reconnect (e.g. the daemon was killed
+// and respawned); a stale boolean flag would leave the forwarder bound to the
+// dead client, so live events (cwd/exit/…) would silently stop reaching the
+// renderer. Track the instance instead and re-attach whenever it changes.
+let forwarderClient: DaemonClient | null = null;
 
 function broadcast(evt: DaemonEvent): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -10,24 +16,27 @@ function broadcast(evt: DaemonEvent): void {
   }
 }
 
+function ensureForwarder(client: DaemonClient): void {
+  if (forwarderClient === client) return;
+  client.on('event', (evt: DaemonEvent) => broadcast(evt));
+  forwarderClient = client;
+}
+
 export function registerDaemonIpc(ipc: IpcMain): void {
   ipc.handle('daemon:request', async (_e, req: DaemonRequest) => {
     const client = await ensureDaemon();
-    if (!listenerInstalled) {
-      client.on('event', (evt: DaemonEvent) => broadcast(evt));
-      listenerInstalled = true;
-    }
+    ensureForwarder(client);
     return client.request(req);
   });
 
   ipc.handle('daemon:ready', async () => {
-    await ensureDaemon();
+    ensureForwarder(await ensureDaemon());
     return true;
   });
 
   ipc.handle('daemon:reconnect', async () => {
     getClient().close();
-    await ensureDaemon();
+    ensureForwarder(await ensureDaemon());
     return true;
   });
 
