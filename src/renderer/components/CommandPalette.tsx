@@ -84,17 +84,10 @@ function buildCommands(): Command[] {
     },
     {
       id: 'view.left',
-      title: 'Toggle Left Sidebar',
+      title: 'Toggle Changes Panel',
       group: 'View',
       hint: `${mod === 'meta' ? '⌘' : 'Ctrl+'}B`,
       run: () => useLayoutPrefs.getState().toggleLeft(),
-    },
-    {
-      id: 'view.right',
-      title: 'Toggle Right Sidebar',
-      group: 'View',
-      hint: `${mod === 'meta' ? '⌘⇧' : 'Ctrl+Shift+'}B`,
-      run: () => useLayoutPrefs.getState().toggleRight(),
     },
     {
       id: 'git.commit',

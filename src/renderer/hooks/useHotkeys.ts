@@ -11,10 +11,8 @@ const opts = { enableOnFormTags: true as const, enableOnContentEditable: true as
 
 export function useGlobalHotkeys(): void {
   const toggleLeft = useLayoutPrefs((s) => s.toggleLeft);
-  const toggleRight = useLayoutPrefs((s) => s.toggleRight);
 
   useHotkeys(`${mod}+b`, () => toggleLeft(), opts);
-  useHotkeys(`${mod}+shift+b`, () => toggleRight(), opts);
   useHotkeys(`${mod}+shift+enter`, () => useDockview.getState().toggleZoom(), opts);
 
   // new terminal as a tab in the active group

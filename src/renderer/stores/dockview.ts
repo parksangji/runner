@@ -61,6 +61,9 @@ export const useDockview = create<DockviewState>((set, get) => ({
         split && refGroup
           ? { referenceGroup: refGroup, direction: split as 'left' | 'right' | 'above' | 'below' }
           : undefined;
+      // Add the panel (with its split position) BEFORE the session enters the
+      // store, so the Center sync effect sees an existing panel and doesn't
+      // race in with a default-positioned one.
       api.addPanel({
         id: summary.id,
         component: 'terminal',
@@ -68,6 +71,8 @@ export const useDockview = create<DockviewState>((set, get) => ({
         title: shortenCwd(cwd),
         ...(position ? { position } : {}),
       });
+      useSessions.getState().upsert(summary);
+      useSessions.getState().setFocus(summary.id);
     } catch (err) {
       console.error('createTerminal failed', err);
     }

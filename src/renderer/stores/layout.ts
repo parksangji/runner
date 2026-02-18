@@ -2,12 +2,18 @@ import { create } from 'zustand';
 import { runner } from '../api';
 import { persistedPaths } from './persistedPaths';
 
+export const LEFT_WIDTH_MIN = 220;
+export const LEFT_WIDTH_MAX = 640;
+const LEFT_WIDTH_DEFAULT = 340;
+
 interface LayoutPrefsState {
   leftOpen: boolean;
   rightOpen: boolean;
+  leftWidth: number;
   zoomed: boolean;
   toggleLeft: () => void;
   toggleRight: () => void;
+  setLeftWidth: (w: number) => void;
   setZoom: (v: boolean) => void;
   loadPrefs: () => Promise<void>;
 }
@@ -15,6 +21,7 @@ interface LayoutPrefsState {
 interface PersistedPrefs {
   leftOpen: boolean;
   rightOpen: boolean;
+  leftWidth?: number;
   dock?: unknown;
 }
 
@@ -28,6 +35,7 @@ async function writePrefs(): Promise<void> {
     const payload: PersistedPrefs = {
       leftOpen: state.leftOpen,
       rightOpen: state.rightOpen,
+      leftWidth: state.leftWidth,
       dock,
     };
     memoryPrefs[PREFS_KEY] = payload;
@@ -50,6 +58,7 @@ function schedulePersist(): void {
 export const useLayoutPrefs = create<LayoutPrefsState>((set, get) => ({
   leftOpen: true,
   rightOpen: true,
+  leftWidth: LEFT_WIDTH_DEFAULT,
   zoomed: false,
 
   toggleLeft() {
@@ -59,6 +68,12 @@ export const useLayoutPrefs = create<LayoutPrefsState>((set, get) => ({
 
   toggleRight() {
     set({ rightOpen: !get().rightOpen });
+    schedulePersist();
+  },
+
+  setLeftWidth(w) {
+    const clamped = Math.max(LEFT_WIDTH_MIN, Math.min(LEFT_WIDTH_MAX, Math.round(w)));
+    set({ leftWidth: clamped });
     schedulePersist();
   },
 
@@ -75,6 +90,10 @@ export const useLayoutPrefs = create<LayoutPrefsState>((set, get) => ({
       set({
         leftOpen: parsed.leftOpen ?? true,
         rightOpen: parsed.rightOpen ?? true,
+        leftWidth: Math.max(
+          LEFT_WIDTH_MIN,
+          Math.min(LEFT_WIDTH_MAX, parsed.leftWidth ?? LEFT_WIDTH_DEFAULT)
+        ),
       });
       if (parsed.dock !== undefined) {
         useLayoutDock.setState({ lastSerialized: parsed.dock, restored: false });
