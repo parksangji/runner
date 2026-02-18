@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TopBar } from './components/TopBar';
-import { LeftSidebar } from './components/LeftSidebar';
-import { RightSidebar } from './components/RightSidebar';
+import { ChangesPanel } from './components/ChangesPanel';
 import { Center } from './components/Center';
 import { CommitDialog } from './components/CommitDialog';
 import { BranchDialog } from './components/BranchDialog';
@@ -16,6 +15,7 @@ import { runner } from './api';
 
 export function App(): JSX.Element {
   const hydrate = useSessions((s) => s.hydrate);
+  const reconcile = useSessions((s) => s.reconcile);
   const focusedSession = useSessions((s) =>
     s.focusedId ? s.sessions[s.focusedId] ?? null : null
   );
@@ -26,8 +26,10 @@ export function App(): JSX.Element {
   const sessionsMap = useSessions((s) => s.sessions);
   const loadPrefs = useLayoutPrefs((s) => s.loadPrefs);
   const leftOpen = useLayoutPrefs((s) => s.leftOpen);
-  const rightOpen = useLayoutPrefs((s) => s.rightOpen);
+  const leftWidth = useLayoutPrefs((s) => s.leftWidth);
+  const setLeftWidth = useLayoutPrefs((s) => s.setLeftWidth);
   const initTheme = useTheme((s) => s.init);
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     initTheme();
@@ -45,6 +47,15 @@ export function App(): JSX.Element {
       off?.();
     };
   }, [loadPrefs, loadPinned, hydrate]);
+
+  // Safety net: re-sync session state (notably cwd) from the daemon on an
+  // interval. Live `cwd` events are the fast path; this guarantees the UI
+  // converges even if an event is dropped, so a terminal that cd's into a git
+  // repo reliably surfaces in the Changes panel.
+  useEffect(() => {
+    const t = setInterval(() => void reconcile(), 2000);
+    return () => clearInterval(t);
+  }, [reconcile]);
 
   // Refresh git status whenever focused session's cwd changes.
   useEffect(() => {
@@ -86,21 +97,51 @@ export function App(): JSX.Element {
 
   useGlobalHotkeys();
 
+  const startResize = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setDragging(true);
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+      const onMove = (ev: MouseEvent): void => setLeftWidth(ev.clientX);
+      const onUp = (): void => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        setDragging(false);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    },
+    [setLeftWidth]
+  );
+
   const bodyStyle = useMemo<React.CSSProperties>(
     () => ({
-      gridTemplateColumns: `${leftOpen ? '240px' : '0px'} 1fr ${rightOpen ? '360px' : '0px'}`,
-      transition: 'grid-template-columns 120ms ease',
+      gridTemplateColumns: leftOpen ? `${leftWidth}px 5px 1fr` : '0px 0px 1fr',
+      transition: dragging ? 'none' : 'grid-template-columns 120ms ease',
     }),
-    [leftOpen, rightOpen]
+    [leftOpen, leftWidth, dragging]
   );
 
   return (
     <div className="app">
       <TopBar />
       <div className="body" style={bodyStyle}>
-        {leftOpen ? <LeftSidebar /> : <div />}
+        {leftOpen ? <ChangesPanel /> : <div />}
+        {leftOpen ? (
+          <div
+            className="resizer"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize changes panel"
+            onMouseDown={startResize}
+          />
+        ) : (
+          <div />
+        )}
         <Center />
-        {rightOpen ? <RightSidebar /> : <div />}
       </div>
       <CommitDialog />
       <BranchDialog />

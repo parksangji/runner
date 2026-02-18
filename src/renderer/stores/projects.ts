@@ -15,6 +15,8 @@ interface ProjectsState {
   pinned: string[];
   selectedCwd: string | null;
   selectedFile: string | null;
+  staged: boolean;
+  setStaged: (v: boolean) => void;
   setSelected: (cwd: string | null, file?: string | null) => void;
   togglePin: (cwd: string) => void;
   recompute: (sessions: SessionSummary[]) => void;
@@ -45,6 +47,11 @@ export const useProjects = create<ProjectsState>((set, get) => ({
   pinned: [],
   selectedCwd: null,
   selectedFile: null,
+  staged: false,
+
+  setStaged(v) {
+    set({ staged: v });
+  },
 
   setSelected(cwd, file) {
     set({ selectedCwd: cwd, selectedFile: file ?? null });

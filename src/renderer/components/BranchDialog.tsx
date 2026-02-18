@@ -7,13 +7,16 @@ import { runner } from '../api';
 
 interface DialogState {
   open: boolean;
-  show: () => void;
+  // Repo the dialog should operate on. null → fall back to focused session.
+  cwd: string | null;
+  show: (cwd?: string) => void;
   hide: () => void;
 }
 
 export const useBranchDialog = create<DialogState>((set) => ({
   open: false,
-  show: () => set({ open: true }),
+  cwd: null,
+  show: (cwd) => set({ open: true, cwd: cwd ?? null }),
   hide: () => set({ open: false }),
 }));
 
@@ -26,8 +29,11 @@ interface BranchSummary {
 export function BranchDialog(): JSX.Element | null {
   const open = useBranchDialog((s) => s.open);
   const hide = useBranchDialog((s) => s.hide);
+  const targetCwd = useBranchDialog((s) => s.cwd);
   const focused = useSessions((s) => (s.focusedId ? s.sessions[s.focusedId] : null));
   const refresh = useGit((s) => s.refresh);
+
+  const cwd = targetCwd ?? focused?.cwd ?? null;
 
   const [branches, setBranches] = useState<string[]>([]);
   const [current, setCurrent] = useState<string | null>(null);
@@ -39,9 +45,9 @@ export function BranchDialog(): JSX.Element | null {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async (): Promise<void> => {
-    if (!focused?.cwd) return;
+    if (!cwd) return;
     try {
-      const res = (await runner().git.branches(focused.cwd)) as BranchSummary | null;
+      const res = (await runner().git.branches(cwd)) as BranchSummary | null;
       if (!res) return;
       const list = res.all ?? Object.keys(res.branches ?? {});
       setBranches(list.filter((b) => !b.startsWith('remotes/')));
@@ -49,7 +55,7 @@ export function BranchDialog(): JSX.Element | null {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [focused]);
+  }, [cwd]);
 
   useEffect(() => {
     if (open) {
@@ -76,12 +82,12 @@ export function BranchDialog(): JSX.Element | null {
   const exact = filtered.some((b) => b === query.trim());
 
   const switchTo = async (branch: string): Promise<void> => {
-    if (!focused?.cwd) return;
+    if (!cwd) return;
     setBusy(true);
     setError(null);
     try {
-      await runner().git.checkout(focused.cwd, branch, false);
-      await refresh(focused.cwd);
+      await runner().git.checkout(cwd, branch, false);
+      await refresh(cwd);
       hide();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -92,12 +98,12 @@ export function BranchDialog(): JSX.Element | null {
 
   const create = async (): Promise<void> => {
     const name = query.trim();
-    if (!name || !focused?.cwd) return;
+    if (!name || !cwd) return;
     setBusy(true);
     setError(null);
     try {
-      await runner().git.checkout(focused.cwd, name, true);
-      await refresh(focused.cwd);
+      await runner().git.checkout(cwd, name, true);
+      await refresh(cwd);
       hide();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

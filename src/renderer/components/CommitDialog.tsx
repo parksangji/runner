@@ -7,13 +7,16 @@ import { runner } from '../api';
 
 interface DialogState {
   open: boolean;
-  show: () => void;
+  // Repo the dialog should commit against. null → fall back to focused session.
+  cwd: string | null;
+  show: (cwd?: string) => void;
   hide: () => void;
 }
 
 export const useCommitDialog = create<DialogState>((set) => ({
   open: false,
-  show: () => set({ open: true }),
+  cwd: null,
+  show: (cwd) => set({ open: true, cwd: cwd ?? null }),
   hide: () => set({ open: false }),
 }));
 
@@ -23,8 +26,11 @@ export function CommitDialog(): JSX.Element | null {
   const open = useCommitDialog((s) => s.open);
   const hide = useCommitDialog((s) => s.hide);
   const show = useCommitDialog((s) => s.show);
+  const targetCwd = useCommitDialog((s) => s.cwd);
   const focused = useSessions((s) => (s.focusedId ? s.sessions[s.focusedId] : null));
   const refresh = useGit((s) => s.refresh);
+
+  const cwd = targetCwd ?? focused?.cwd ?? null;
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -35,7 +41,7 @@ export function CommitDialog(): JSX.Element | null {
   const subjectRef = useRef<HTMLInputElement | null>(null);
 
   const submit = useCallback(async (): Promise<void> => {
-    if (!focused?.cwd) return;
+    if (!cwd) return;
     const message = body.trim() ? `${subject.trim()}\n\n${body.trim()}` : subject.trim();
     if (!message) {
       setError('Subject is required');
@@ -44,8 +50,8 @@ export function CommitDialog(): JSX.Element | null {
     setBusy(true);
     setError(null);
     try {
-      await runner().git.commit(focused.cwd, message, { amend, signoff });
-      await refresh(focused.cwd);
+      await runner().git.commit(cwd, message, { amend, signoff });
+      await refresh(cwd);
       setSubject('');
       setBody('');
       setAmend(false);
@@ -56,7 +62,7 @@ export function CommitDialog(): JSX.Element | null {
     } finally {
       setBusy(false);
     }
-  }, [focused, subject, body, amend, signoff, refresh, hide]);
+  }, [cwd, subject, body, amend, signoff, refresh, hide]);
 
   // ⌘⏎ opens the dialog if closed, submits if open.
   useHotkeys(
