@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from 'dockview-react';
 import { useDockview } from '../stores/dockview';
 import { useSessions } from '../stores/sessions';
 import { useLayoutDock } from '../stores/layout';
+import { useTheme } from '../stores/theme';
 import { TerminalView } from './TerminalView';
+import { DiffOverlay } from './DiffOverlay';
 
 function focusXtermIn(root: HTMLElement | null): void {
   if (!root) return;
@@ -32,10 +34,52 @@ const components = {
   terminal: TerminalPanel,
 };
 
+const isMac = navigator.platform.toLowerCase().includes('mac');
+const mod = isMac ? '⌘' : 'Ctrl';
+const shift = isMac ? '⇧' : 'Shift';
+
+const SHORTCUTS: { keys: string; label: string }[] = [
+  { keys: `${mod}T`, label: '새 터미널' },
+  { keys: `${mod}D`, label: '오른쪽으로 분할' },
+  { keys: `${mod}${shift}D`, label: '아래로 분할' },
+  { keys: `${mod}W`, label: '현재 터미널 닫기' },
+  { keys: `${mod}B`, label: '변경내역 패널 토글' },
+  { keys: `${mod}K`, label: '커맨드 팔레트' },
+];
+
+function Welcome(): JSX.Element {
+  return (
+    <div className="welcome">
+      <div className="welcome-card">
+        <h1>runner</h1>
+        <p className="welcome-sub">Claude Code 워크벤치 — 멀티 터미널 + git</p>
+        <button
+          type="button"
+          className="welcome-cta"
+          onClick={() => void useDockview.getState().createTerminal()}
+        >
+          {mod}T &nbsp;새 터미널 열기
+        </button>
+        <ul className="welcome-keys">
+          {SHORTCUTS.map((s) => (
+            <li key={s.keys}>
+              <kbd>{s.keys}</kbd>
+              <span>{s.label}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export function Center(): JSX.Element {
   const setApi = useDockview((s) => s.setApi);
   const sessions = useSessions((s) => s.sessions);
-  const hydratedRef = useRef(false);
+  const resolved = useTheme((s) => s.resolved);
+  // Follow the app theme so the tab strip matches the rest of the UI
+  // (light = white tabs) instead of the hard-coded dark abyss theme.
+  const dockTheme = resolved === 'dark' ? 'dockview-theme-dark' : 'dockview-theme-light';
 
   const onReady = (event: DockviewReadyEvent): void => {
     setApi(event.api);
@@ -74,44 +118,17 @@ export function Center(): JSX.Element {
     });
   };
 
+  // Keep dockview panels in 1:1 sync with the session store at all times — not
+  // just on first hydration. A session can appear *after* mount (daemon restore
+  // landing late, or the periodic reconcile pulling it in); without adding a
+  // panel here those sessions would exist with no visible terminal, which made
+  // the Changes panel show repos for terminals you couldn't see.
   useEffect(() => {
     const api = useDockview.getState().api;
     if (!api) return;
     const known = new Set(Object.keys(sessions));
 
-    if (!hydratedRef.current) {
-      // First sync: panels that survived from a restored layout need their
-      // session-id to still exist; otherwise drop them. Then add panels for
-      // any daemon-restored sessions that the layout didn't already include.
-      for (const p of api.panels) {
-        if (!known.has(p.id)) {
-          try {
-            api.removePanel(p);
-          } catch {
-            /* ignore */
-          }
-        }
-      }
-      for (const id of known) {
-        if (!api.getPanel(id)) {
-          const s = sessions[id]!;
-          try {
-            api.addPanel({
-              id,
-              component: 'terminal',
-              params: { sessionId: id, cwd: s.cwd },
-              title: s.cwd.split('/').slice(-2).join('/') || s.cwd,
-            });
-          } catch (err) {
-            console.error('hydrate panel failed', err);
-          }
-        }
-      }
-      hydratedRef.current = true;
-      return;
-    }
-
-    // Steady state: drop panels whose session is gone.
+    // Drop panels whose session is gone.
     for (const p of api.panels) {
       if (!known.has(p.id)) {
         try {
@@ -121,13 +138,38 @@ export function Center(): JSX.Element {
         }
       }
     }
+
+    // Add panels for sessions that don't have one yet, and keep titles synced
+    // to each session's (possibly changed) cwd.
+    for (const [id, s] of Object.entries(sessions)) {
+      const title = s.cwd.split('/').slice(-2).join('/') || s.cwd;
+      const panel = api.getPanel(id);
+      if (!panel) {
+        try {
+          api.addPanel({
+            id,
+            component: 'terminal',
+            params: { sessionId: id, cwd: s.cwd },
+            title,
+          });
+        } catch (err) {
+          console.error('add panel failed', err);
+        }
+      } else if (panel.title !== title) {
+        panel.api.setTitle(title);
+      }
+    }
   }, [sessions]);
+
+  const empty = Object.keys(sessions).length === 0;
 
   return (
     <div className="center">
       <div className="dock-host">
-        <DockviewReact onReady={onReady} components={components} className="dockview-theme-abyss" />
+        <DockviewReact onReady={onReady} components={components} className={dockTheme} />
       </div>
+      <DiffOverlay />
+      {empty ? <Welcome /> : null}
     </div>
   );
 }
