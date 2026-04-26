@@ -1,69 +1,36 @@
-import { useSessions } from '../stores/sessions';
-import { useGit } from '../stores/git';
-import { runner } from '../api';
-import { useCommitDialog } from './CommitDialog';
-import { useBranchDialog } from './BranchDialog';
+import { useTheme, type ThemeMode } from '../stores/theme';
+
+const OPTIONS: { mode: ThemeMode; icon: string; label: string }[] = [
+  { mode: 'light', icon: '☀', label: 'Light' },
+  { mode: 'dark', icon: '☾', label: 'Dark' },
+  { mode: 'system', icon: '🖥', label: 'System' },
+];
 
 export function TopBar(): JSX.Element {
-  const focused = useSessions((s) => (s.focusedId ? s.sessions[s.focusedId] : null));
-  const snapshots = useGit((s) => s.snapshots);
-  const showCommit = useCommitDialog((s) => s.show);
-  const showBranch = useBranchDialog((s) => s.show);
+  const mode = useTheme((s) => s.mode);
+  const setMode = useTheme((s) => s.setMode);
 
-  const snap = focused
-    ? Object.values(snapshots).find((sn) => sn.repoRoot && focused.cwd.startsWith(sn.repoRoot)) ??
-      null
-    : null;
-
-  const cwd = focused?.cwd ?? '';
-  const run = async (fn: () => Promise<unknown>): Promise<void> => {
-    try {
-      await fn();
-      if (cwd) await useGit.getState().refresh(cwd);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
+  // Git actions (Pull/Push/Commit/Branch) live per-directory in the Changes
+  // panel, so the top bar carries the window-drag region, brand, and the
+  // light/dark/system theme switch (right edge).
   return (
     <header className="topbar" role="banner">
       <span className="brand">runner</span>
-      <button
-        type="button"
-        aria-label="Pull"
-        disabled={!cwd}
-        onClick={() => void run(() => runner().git.pull(cwd))}
-      >
-        ⇣ Pull
-        {snap && snap.behind > 0 ? <sup> {snap.behind}</sup> : null}
-      </button>
-      <button
-        type="button"
-        aria-label="Push"
-        disabled={!cwd}
-        onClick={() => void run(() => runner().git.push(cwd))}
-      >
-        ⇡ Push
-        {snap && snap.ahead > 0 ? <sup> {snap.ahead}</sup> : null}
-      </button>
-      <button
-        type="button"
-        aria-label="Commit"
-        disabled={!cwd}
-        onClick={() => showCommit()}
-      >
-        Commit
-      </button>
-      <button
-        type="button"
-        aria-label="Branch"
-        disabled={!cwd}
-        onClick={() => showBranch()}
-      >
-        Branch
-      </button>
       <div className="spacer" />
-      {snap?.branch ? <span className="branch">⎇ {snap.branch}</span> : null}
+      <div className="theme-switch" role="group" aria-label="Theme">
+        {OPTIONS.map((o) => (
+          <button
+            key={o.mode}
+            type="button"
+            className={mode === o.mode ? 'active' : ''}
+            aria-pressed={mode === o.mode}
+            title={o.label}
+            onClick={() => setMode(o.mode)}
+          >
+            {o.icon}
+          </button>
+        ))}
+      </div>
     </header>
   );
 }
