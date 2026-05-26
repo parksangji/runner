@@ -15,19 +15,17 @@
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f6f7fa;
-    --bg-elev: #ffffff;
-    --bg-elev-2: #eef0f5;
-    --fg: #1c2230;
-    --fg-dim: #5a6374;
-    --accent: #1f6feb;
-    --accent-soft: rgba(31, 111, 235, 0.12);
-    --border: #d8dce6;
-    --added: #1a7f37;
-    --removed: #cf222e;
-  }
+:root[data-theme='light'] {
+  --bg: #f6f7fa;
+  --bg-elev: #ffffff;
+  --bg-elev-2: #eef0f5;
+  --fg: #1c2230;
+  --fg-dim: #5a6374;
+  --accent: #1f6feb;
+  --accent-soft: rgba(31, 111, 235, 0.12);
+  --border: #d8dce6;
+  --added: #1a7f37;
+  --removed: #cf222e;
 }
 
 * {
@@ -498,4 +496,78 @@ button.primary:disabled {
   overflow: auto;
   white-space: pre;
   border-radius: 4px;
+}
+
+/* Command Palette */
+.palette-backdrop {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+
+.palette {
+  width: min(640px, 92vw);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.palette input {
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.palette-list li {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.palette-list li.active {
+  background: var(--accent-soft);
+}
+
+.palette-group {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-dim);
+}
+
+.palette-title {
+  color: var(--fg);
+}
+
+.palette-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+
+.palette-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--fg-dim);
+  font-style: italic;
 }

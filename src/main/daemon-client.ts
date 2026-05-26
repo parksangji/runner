@@ -60,6 +60,13 @@ export class DaemonClient extends EventEmitter {
     });
   }
 
+  /** Send a request without tracking a response. Use for hot paths like
+   *  keystroke write and pty resize where caller doesn't need ack. */
+  fireAndForget(req: DaemonRequest): void {
+    if (!this.socket || !this.connected) return;
+    this.send({ req });
+  }
+
   private send(env: RpcEnvelope): void {
     const json = Buffer.from(JSON.stringify(env), 'utf8');
     const len = Buffer.alloc(4);

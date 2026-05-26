@@ -1,6 +1,6 @@
 import { BrowserWindow, type IpcMain } from 'electron';
 import { ensureDaemon, getClient } from '../daemon-supervisor';
-import type { DaemonEvent, DaemonRequest } from '@shared/protocol';
+import type { DaemonEvent, DaemonRequest, SessionId } from '@shared/protocol';
 
 let listenerInstalled = false;
 
@@ -29,5 +29,24 @@ export function registerDaemonIpc(ipc: IpcMain): void {
     getClient().close();
     await ensureDaemon();
     return true;
+  });
+
+  // Hot paths: keystroke and resize. ipcMain.on (not handle) avoids the
+  // Promise round trip on the renderer side; ensureDaemon has already
+  // completed before the window is created so getClient() is sync-safe.
+  ipc.on('daemon:write', (_e, id: SessionId, data: string) => {
+    try {
+      getClient().fireAndForget({ kind: 'write', id, data });
+    } catch {
+      /* daemon not ready — drop the keystroke rather than throw */
+    }
+  });
+
+  ipc.on('daemon:resize', (_e, id: SessionId, cols: number, rows: number) => {
+    try {
+      getClient().fireAndForget({ kind: 'resize', id, cols, rows });
+    } catch {
+      /* ignore */
+    }
   });
 }

@@ -38,7 +38,17 @@ class ClientConn {
       this.buffer = this.buffer.subarray(4 + len);
       try {
         const env = JSON.parse(payload.toString('utf8')) as RpcEnvelope;
-        if (env.req && env.id != null) void this.handle(env.id, env.req);
+        if (env.req) {
+          if (env.id != null) {
+            void this.handle(env.id, env.req);
+          } else {
+            // Fire-and-forget: no response needed, no Promise tracking.
+            // Used for hot paths like keystroke write and pty resize.
+            void this.registry.dispatch(env.req).catch(() => {
+              /* silent: caller didn't ask for status */
+            });
+          }
+        }
       } catch {
         /* ignore malformed */
       }

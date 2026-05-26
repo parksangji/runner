@@ -7,6 +7,8 @@ interface RunnerApi {
     ready: () => Promise<boolean>;
     request: <T = unknown>(req: DaemonRequest) => Promise<T>;
     reconnect: () => Promise<boolean>;
+    write: (id: string, data: string) => void;
+    resize: (id: string, cols: number, rows: number) => void;
     onEvent: (cb: (evt: DaemonEvent) => void) => () => void;
   };
   git: {

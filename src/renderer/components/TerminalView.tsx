@@ -1,22 +1,32 @@
 import { useEffect, useRef } from 'react';
-import { Terminal } from '@xterm/xterm';
+import { Terminal, type ITheme } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { runner } from '../api';
+import { useTheme } from '../stores/theme';
 
 interface Props {
   sessionId: string;
 }
 
-const themeDark = {
-  background: '#0f1117',
-  foreground: '#d6dbe5',
-  cursor: '#6aa7ff',
-  selectionBackground: 'rgba(106,167,255,0.25)',
-};
+function readThemeFromCss(): ITheme {
+  const root = getComputedStyle(document.documentElement);
+  const get = (name: string, fallback: string): string => {
+    const v = root.getPropertyValue(name).trim();
+    return v || fallback;
+  };
+  return {
+    background: get('--bg', '#0f1117'),
+    foreground: get('--fg', '#d6dbe5'),
+    cursor: get('--accent', '#6aa7ff'),
+    cursorAccent: get('--bg', '#0f1117'),
+    selectionBackground: get('--accent-soft', 'rgba(106,167,255,0.25)'),
+  };
+}
 
 export function TerminalView({ sessionId }: Props): JSX.Element {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
+  const resolvedTheme = useTheme((s) => s.resolved);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -26,7 +36,7 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       fontSize: 13,
       cursorBlink: true,
       allowProposedApi: true,
-      theme: themeDark,
+      theme: readThemeFromCss(),
       scrollback: 5000,
       macOptionIsMeta: true,
     });
@@ -60,12 +70,12 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       const cmd = isMac ? e.metaKey : e.ctrlKey;
       // Shell control byte translations
       if (e.key === 'Backspace' && cmd && !e.shiftKey && !e.altKey) {
-        void runner().daemon.request({ kind: 'write', id: sessionId, data: '\x15' });
+        runner().daemon.write(sessionId, '\x15');
         e.preventDefault();
         return false;
       }
       if (e.key === 'Backspace' && e.altKey && !cmd) {
-        void runner().daemon.request({ kind: 'write', id: sessionId, data: '\x17' });
+        runner().daemon.write(sessionId, '\x17');
         e.preventDefault();
         return false;
       }
@@ -84,12 +94,7 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
         if (rect.width < 20 || rect.height < 20) return;
         try {
           fit.fit();
-          void runner().daemon.request({
-            kind: 'resize',
-            id: sessionId,
-            cols: term.cols,
-            rows: term.rows,
-          });
+          runner().daemon.resize(sessionId, term.cols, term.rows);
         } catch (err) {
           console.error('fit failed', err);
         }
@@ -107,7 +112,7 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     });
 
     const onInput = term.onData((data) => {
-      void runner().daemon.request({ kind: 'write', id: sessionId, data });
+      runner().daemon.write(sessionId, data);
     });
 
     // attach: pull scrollback so the user sees prior output after reattach
@@ -135,6 +140,13 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       void runner().daemon.request({ kind: 'detach', id: sessionId });
     };
   }, [sessionId]);
+
+  // Re-theme xterm when the resolved theme changes.
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    term.options.theme = readThemeFromCss();
+  }, [resolvedTheme]);
 
   return <div ref={hostRef} className="xterm-host" tabIndex={-1} />;
 }

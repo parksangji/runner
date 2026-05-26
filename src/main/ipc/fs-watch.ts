@@ -18,7 +18,7 @@ function schedule(root: string): void {
     setTimeout(() => {
       debounceTimers.delete(root);
       notify(root);
-    }, 150)
+    }, 400)
   );
 }
 
@@ -26,10 +26,20 @@ export function registerFsWatchIpc(ipc: IpcMain): void {
   ipc.handle('fs:watch', (_e, root: string) => {
     if (watchers.has(root)) return true;
     const watcher = chokidar.watch(root, {
-      ignored: [/(^|[\/\\])\../, /node_modules/, /dist/, /out/],
+      ignored: [
+        /(^|[\/\\])\../, // hidden files / .git
+        /node_modules/,
+        /dist/,
+        /out/,
+        /build/,
+        /target/,
+        /\.next/,
+        /coverage/,
+      ],
       ignoreInitial: true,
-      depth: 8,
+      depth: 4,
       persistent: true,
+      awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 100 },
     });
     watcher.on('all', () => schedule(root));
     watchers.set(root, watcher);

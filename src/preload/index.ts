@@ -20,6 +20,14 @@ const api = {
     request: <T = unknown>(req: DaemonRequest): Promise<T> =>
       ipcRenderer.invoke('daemon:request', req) as Promise<T>,
     reconnect: (): Promise<boolean> => ipcRenderer.invoke('daemon:reconnect'),
+    // Fire-and-forget channels for hot input/resize paths — no Promise,
+    // no round trip. Use these instead of request() for keystrokes.
+    write: (id: string, data: string): void => {
+      ipcRenderer.send('daemon:write', id, data);
+    },
+    resize: (id: string, cols: number, rows: number): void => {
+      ipcRenderer.send('daemon:resize', id, cols, rows);
+    },
     onEvent: (cb: EventListener): (() => void) => {
       listeners.add(cb);
       return () => listeners.delete(cb);
