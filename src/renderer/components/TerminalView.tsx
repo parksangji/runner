@@ -93,18 +93,25 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     const safeFit = (): void => {
       if (pendingFit) return;
       pendingFit = true;
+      // Two-stage defer: rAF gives xterm a chance to lay out its
+      // textarea + helper elements, the setTimeout 0 lets renderService
+      // finish wiring up its dimensions. Calling fit() too early in
+      // xterm 5.x causes the Viewport to schedule a syncScrollArea
+      // against a not-yet-initialized renderService.
       requestAnimationFrame(() => {
-        pendingFit = false;
-        if (!isAlive()) return;
-        if (!host.isConnected) return;
-        const rect = host.getBoundingClientRect();
-        if (rect.width < 20 || rect.height < 20) return;
-        try {
-          fit.fit();
-          runner().daemon.resize(sessionId, term.cols, term.rows);
-        } catch (err) {
-          console.warn('fit failed', err);
-        }
+        setTimeout(() => {
+          pendingFit = false;
+          if (!isAlive()) return;
+          if (!host.isConnected) return;
+          const rect = host.getBoundingClientRect();
+          if (rect.width < 20 || rect.height < 20) return;
+          try {
+            fit.fit();
+            runner().daemon.resize(sessionId, term.cols, term.rows);
+          } catch (err) {
+            console.warn('fit failed', err);
+          }
+        }, 0);
       });
     };
 
@@ -149,6 +156,13 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       ro.disconnect();
       offEvent();
       onInput.dispose();
+      // FitAddon owns event subscriptions on the terminal; disposing it
+      // BEFORE term.dispose() avoids leaks that fire on later writes.
+      try {
+        fit.dispose();
+      } catch {
+        /* ignore */
+      }
       try {
         term.dispose();
       } catch {
