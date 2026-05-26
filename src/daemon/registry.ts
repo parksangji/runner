@@ -27,7 +27,9 @@ export class SessionRegistry extends EventEmitter {
       const specs = JSON.parse(raw) as SessionSpec[];
       for (const spec of specs) {
         try {
-          this.createInternal(spec);
+          // Daemon-side restore: bring the shell back up immediately so a
+          // reconnecting renderer can attach and start receiving output.
+          this.createInternal(spec, true);
         } catch {
           /* skip unspawnable */
         }
@@ -73,11 +75,17 @@ export class SessionRegistry extends EventEmitter {
     });
   }
 
-  private createInternal(spec: SessionSpec): Session {
+  /**
+   * Build a Session for the spec but do NOT spawn its PTY yet.
+   * The PTY is forked at attach time so the renderer has a chance to
+   * register its data-event listener first. `eager=true` overrides this
+   * (used for daemon-side restore — we want surviving sessions running).
+   */
+  private createInternal(spec: SessionSpec, eager: boolean = false): Session {
     const session = new Session(spec);
     this.wire(session);
     this.sessions.set(spec.id, session);
-    session.start();
+    if (eager) session.start();
     return session;
   }
 
@@ -102,12 +110,16 @@ export class SessionRegistry extends EventEmitter {
       case 'attach': {
         const s = this.sessions.get(req.id);
         if (!s) throw new Error(`Unknown session ${req.id}`);
-        const snapshot = { summary: s.summary(), scrollback: s.scrollback() };
-        // Open the floodgates only AFTER we've captured the scrollback so
-        // the caller writes the snapshot first and then receives only
-        // post-attach data events — no duplicates.
-        s.beginBroadcasting();
-        return snapshot;
+        // For sessions whose PTY hasn't been forked yet (new spawns), do it
+        // now — the renderer's listener is already in place, so the prompt
+        // arrives as a live event with no race or duplicate path.
+        // For restored sessions whose PTY is already running, just return
+        // the scrollback snapshot.
+        if (!s.isStarted) {
+          s.start();
+          return { summary: s.summary(), scrollback: '' };
+        }
+        return { summary: s.summary(), scrollback: s.scrollback() };
       }
       case 'detach':
         // Detach is a UI concept; daemon keeps the session alive.

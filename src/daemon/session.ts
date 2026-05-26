@@ -12,11 +12,11 @@ export class Session extends EventEmitter {
   private buffer = new RingBuffer<string>(SCROLLBACK_LINES);
   private currentLine = '';
   private alive = false;
-  // Until at least one client attaches, we don't broadcast data events.
-  // This avoids the renderer seeing the same prompt twice: once as a live
-  // data event arriving before attach resolves, and once embedded in the
-  // scrollback that attach returns.
-  private broadcasting = false;
+  // Lazy PTY spawn: we don't fork the shell until a client attaches. This
+  // guarantees the renderer has registered its data-event listener BEFORE
+  // any PTY output exists, so the startup prompt arrives via live events
+  // (no scrollback needed, no duplicate write to xterm).
+  private started = false;
 
   constructor(spec: SessionSpec) {
     super();
@@ -24,7 +24,13 @@ export class Session extends EventEmitter {
     this.spec = spec;
   }
 
+  get isStarted(): boolean {
+    return this.started;
+  }
+
   start(): void {
+    if (this.started) return;
+    this.started = true;
     const pty = require('node-pty') as typeof import('node-pty');
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
@@ -43,7 +49,7 @@ export class Session extends EventEmitter {
     this.alive = true;
     proc.onData((data) => {
       this.absorb(data);
-      if (this.broadcasting) this.emit('data', data);
+      this.emit('data', data);
       this.detectCwdMarker(data);
     });
     proc.onExit(({ exitCode, signal }) => {
@@ -96,14 +102,9 @@ export class Session extends EventEmitter {
   }
 
   scrollback(): string {
-    return this.buffer.toArray().join('\n') + (this.currentLine ? '\n' + this.currentLine : '');
-  }
-
-  /** Mark this session as actively attached — from now on PTY data events
-   *  are emitted. Until this is called the daemon silently buffers output
-   *  into the ring buffer so attach() can deliver a clean snapshot. */
-  beginBroadcasting(): void {
-    this.broadcasting = true;
+    const lines = this.buffer.toArray();
+    if (this.currentLine) lines.push(this.currentLine);
+    return lines.join('\n');
   }
 
   summary(): SessionSummary {

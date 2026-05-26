@@ -105,17 +105,12 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     const ro = new ResizeObserver(safeFit);
     ro.observe(host);
 
-    // Buffer any data events that arrive before attach resolves so we can
-    // write the scrollback snapshot first, then drain live events in order.
-    // The daemon guarantees no data events fire for this session until we
-    // call attach, but message ordering between main IPC channels (invoke
-    // result vs send event) isn't strictly enforced, so we belt-and-suspenders.
-    let attachDone = false;
-    const pending: string[] = [];
+    // Subscribe to live data BEFORE attach. The daemon forks the PTY at
+    // attach time (not at spawn time), so the prompt cannot arrive until
+    // after this listener exists.
     const offEvent = runner().daemon.onEvent((evt) => {
       if (evt.kind !== 'data' || evt.id !== sessionId) return;
-      if (!attachDone) pending.push(evt.data);
-      else term.write(evt.data);
+      term.write(evt.data);
     });
 
     const onInput = term.onData((data) => {
@@ -128,10 +123,9 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
         id: sessionId,
       })
       .then((res) => {
+        // Only restored sessions return non-empty scrollback. For new
+        // spawns the daemon returns '' and all output arrives via events.
         if (res?.scrollback) term.write(res.scrollback);
-        for (const chunk of pending) term.write(chunk);
-        pending.length = 0;
-        attachDone = true;
         term.focus();
       })
       .catch((err) => console.error('attach failed', err));
