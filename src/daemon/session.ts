@@ -12,6 +12,11 @@ export class Session extends EventEmitter {
   private buffer = new RingBuffer<string>(SCROLLBACK_LINES);
   private currentLine = '';
   private alive = false;
+  // Until at least one client attaches, we don't broadcast data events.
+  // This avoids the renderer seeing the same prompt twice: once as a live
+  // data event arriving before attach resolves, and once embedded in the
+  // scrollback that attach returns.
+  private broadcasting = false;
 
   constructor(spec: SessionSpec) {
     super();
@@ -38,7 +43,7 @@ export class Session extends EventEmitter {
     this.alive = true;
     proc.onData((data) => {
       this.absorb(data);
-      this.emit('data', data);
+      if (this.broadcasting) this.emit('data', data);
       this.detectCwdMarker(data);
     });
     proc.onExit(({ exitCode, signal }) => {
@@ -92,6 +97,13 @@ export class Session extends EventEmitter {
 
   scrollback(): string {
     return this.buffer.toArray().join('\n') + (this.currentLine ? '\n' + this.currentLine : '');
+  }
+
+  /** Mark this session as actively attached — from now on PTY data events
+   *  are emitted. Until this is called the daemon silently buffers output
+   *  into the ring buffer so attach() can deliver a clean snapshot. */
+  beginBroadcasting(): void {
+    this.broadcasting = true;
   }
 
   summary(): SessionSummary {

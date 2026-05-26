@@ -102,7 +102,12 @@ export class SessionRegistry extends EventEmitter {
       case 'attach': {
         const s = this.sessions.get(req.id);
         if (!s) throw new Error(`Unknown session ${req.id}`);
-        return { summary: s.summary(), scrollback: s.scrollback() };
+        const snapshot = { summary: s.summary(), scrollback: s.scrollback() };
+        // Open the floodgates only AFTER we've captured the scrollback so
+        // the caller writes the snapshot first and then receives only
+        // post-attach data events — no duplicates.
+        s.beginBroadcasting();
+        return snapshot;
       }
       case 'detach':
         // Detach is a UI concept; daemon keeps the session alive.
