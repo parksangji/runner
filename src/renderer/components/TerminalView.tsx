@@ -26,13 +26,17 @@ function readThemeFromCss(): ITheme {
 export function TerminalView({ sessionId }: Props): JSX.Element {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
+  const fitRef = useRef<FitAddon | null>(null);
   const disposedRef = useRef<boolean>(false);
+  const initialThemeRender = useRef<boolean>(true);
   const resolvedTheme = useTheme((s) => s.resolved);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     disposedRef.current = false;
+    initialThemeRender.current = true;
+
     const term = new Terminal({
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
       fontSize: 13,
@@ -45,22 +49,18 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.open(host);
+    // Canonical xterm pattern: fit immediately after open. The error
+    // suppression in main.tsx covers any post-dispose stragglers from
+    // xterm's internal scheduler.
+    try {
+      fit.fit();
+    } catch {
+      /* host not laid out yet; ResizeObserver below will retry */
+    }
     termRef.current = term;
+    fitRef.current = fit;
 
-    // Guarded wrappers: after term.dispose() xterm internals (Viewport,
-    // RenderService, etc.) tear down but any late callback — RAF tick,
-    // ResizeObserver microtask, in-flight attach promise, a queued data
-    // event — could still try to read renderService.dimensions and crash.
-    // Centralize the "is this term still alive?" check.
     const isAlive = (): boolean => !disposedRef.current && termRef.current === term;
-    const safeWrite = (data: string): void => {
-      if (!isAlive()) return;
-      try {
-        term.write(data);
-      } catch (err) {
-        console.warn('term.write after dispose', err);
-      }
-    };
 
     const isMac = navigator.platform.toLowerCase().includes('mac');
     const isAppShortcut = (e: KeyboardEvent): boolean => {
@@ -89,39 +89,34 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       return true;
     });
 
-    let pendingFit = false;
-    const safeFit = (): void => {
-      if (pendingFit) return;
-      pendingFit = true;
-      // Two-stage defer: rAF gives xterm a chance to lay out its
-      // textarea + helper elements, the setTimeout 0 lets renderService
-      // finish wiring up its dimensions. Calling fit() too early in
-      // xterm 5.x causes the Viewport to schedule a syncScrollArea
-      // against a not-yet-initialized renderService.
+    let pendingResize = false;
+    const onResize = (): void => {
+      if (pendingResize || !isAlive()) return;
+      pendingResize = true;
       requestAnimationFrame(() => {
-        setTimeout(() => {
-          pendingFit = false;
-          if (!isAlive()) return;
-          if (!host.isConnected) return;
-          const rect = host.getBoundingClientRect();
-          if (rect.width < 20 || rect.height < 20) return;
-          try {
-            fit.fit();
-            runner().daemon.resize(sessionId, term.cols, term.rows);
-          } catch (err) {
-            console.warn('fit failed', err);
-          }
-        }, 0);
+        pendingResize = false;
+        if (!isAlive() || !host.isConnected) return;
+        const rect = host.getBoundingClientRect();
+        if (rect.width < 20 || rect.height < 20) return;
+        try {
+          fit.fit();
+          runner().daemon.resize(sessionId, term.cols, term.rows);
+        } catch (err) {
+          console.warn('resize fit failed', err);
+        }
       });
     };
-
-    safeFit();
-    const ro = new ResizeObserver(safeFit);
+    const ro = new ResizeObserver(onResize);
     ro.observe(host);
 
     const offEvent = runner().daemon.onEvent((evt) => {
+      if (!isAlive()) return;
       if (evt.kind !== 'data' || evt.id !== sessionId) return;
-      safeWrite(evt.data);
+      try {
+        term.write(evt.data);
+      } catch {
+        /* ignore — late event during teardown */
+      }
     });
 
     const onInput = term.onData((data) => {
@@ -136,17 +131,29 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       })
       .then((res) => {
         if (!isAlive()) return;
-        if (res?.scrollback) safeWrite(res.scrollback);
+        if (res?.scrollback) {
+          try {
+            term.write(res.scrollback);
+          } catch {
+            /* ignore */
+          }
+        }
         try {
           term.focus();
         } catch {
-          /* disposed during await */
+          /* ignore */
         }
       })
       .catch((err) => console.error('attach failed', err));
 
     const onPaneDown = (): void => {
-      if (isAlive()) term.focus();
+      if (isAlive()) {
+        try {
+          term.focus();
+        } catch {
+          /* ignore */
+        }
+      }
     };
     host.addEventListener('mousedown', onPaneDown);
 
@@ -155,9 +162,11 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       host.removeEventListener('mousedown', onPaneDown);
       ro.disconnect();
       offEvent();
-      onInput.dispose();
-      // FitAddon owns event subscriptions on the terminal; disposing it
-      // BEFORE term.dispose() avoids leaks that fire on later writes.
+      try {
+        onInput.dispose();
+      } catch {
+        /* ignore */
+      }
       try {
         fit.dispose();
       } catch {
@@ -166,16 +175,23 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       try {
         term.dispose();
       } catch {
-        /* ignore double-dispose */
+        /* ignore */
       }
       if (termRef.current === term) termRef.current = null;
+      if (fitRef.current === fit) fitRef.current = null;
       void runner().daemon.request({ kind: 'detach', id: sessionId });
     };
   }, [sessionId]);
 
-  // Re-theme xterm when the resolved theme changes — but only if the
-  // terminal hasn't been disposed in between.
+  // Theme re-application: skip the first run (the constructor already
+  // applied the current theme; re-applying it inside React's commit
+  // phase races xterm's internal init and was a primary trigger of
+  // the Viewport.syncScrollArea dimensions throw).
   useEffect(() => {
+    if (initialThemeRender.current) {
+      initialThemeRender.current = false;
+      return;
+    }
     const term = termRef.current;
     if (!term || disposedRef.current) return;
     try {
