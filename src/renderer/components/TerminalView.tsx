@@ -26,11 +26,13 @@ function readThemeFromCss(): ITheme {
 export function TerminalView({ sessionId }: Props): JSX.Element {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
+  const disposedRef = useRef<boolean>(false);
   const resolvedTheme = useTheme((s) => s.resolved);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    disposedRef.current = false;
     const term = new Terminal({
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
       fontSize: 13,
@@ -45,21 +47,26 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     term.open(host);
     termRef.current = term;
 
-    // Two responsibilities:
-    //   1. Translate Mac text-field shortcuts into shell control bytes
-    //      (⌘⌫ → ^U, ⌥⌫ → ^W) and send directly to the PTY.
-    //   2. For ANY app-level ⌘/Cmd shortcut, return false so xterm doesn't
-    //      send those keys to the PTY. Without this, xterm calls
-    //      cancel(e, true) on some keys (notably Enter), which
-    //      stopPropagation()s the event and prevents react-hotkeys-hook
-    //      from ever seeing it. Returning false from this handler skips
-    //      xterm's processing entirely, letting the event bubble.
+    // Guarded wrappers: after term.dispose() xterm internals (Viewport,
+    // RenderService, etc.) tear down but any late callback — RAF tick,
+    // ResizeObserver microtask, in-flight attach promise, a queued data
+    // event — could still try to read renderService.dimensions and crash.
+    // Centralize the "is this term still alive?" check.
+    const isAlive = (): boolean => !disposedRef.current && termRef.current === term;
+    const safeWrite = (data: string): void => {
+      if (!isAlive()) return;
+      try {
+        term.write(data);
+      } catch (err) {
+        console.warn('term.write after dispose', err);
+      }
+    };
+
     const isMac = navigator.platform.toLowerCase().includes('mac');
     const isAppShortcut = (e: KeyboardEvent): boolean => {
       const cmd = isMac ? e.metaKey : e.ctrlKey;
       if (!cmd) return false;
       const k = e.key.toLowerCase();
-      // every combo we register globally — keep this list in sync with useHotkeys.ts
       if (k === 't' || k === 'w' || k === 'd' || k === 'b') return true;
       if (k === 'enter' || k === 'return') return true;
       if (k === 'arrowleft' || k === 'arrowright' || k === 'arrowup' || k === 'arrowdown') return true;
@@ -68,7 +75,6 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true;
       const cmd = isMac ? e.metaKey : e.ctrlKey;
-      // Shell control byte translations
       if (e.key === 'Backspace' && cmd && !e.shiftKey && !e.altKey) {
         runner().daemon.write(sessionId, '\x15');
         e.preventDefault();
@@ -79,7 +85,6 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
         e.preventDefault();
         return false;
       }
-      // Let app-level shortcuts bubble to react-hotkeys-hook on document
       if (isAppShortcut(e)) return false;
       return true;
     });
@@ -90,13 +95,15 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       pendingFit = true;
       requestAnimationFrame(() => {
         pendingFit = false;
+        if (!isAlive()) return;
+        if (!host.isConnected) return;
         const rect = host.getBoundingClientRect();
         if (rect.width < 20 || rect.height < 20) return;
         try {
           fit.fit();
           runner().daemon.resize(sessionId, term.cols, term.rows);
         } catch (err) {
-          console.error('fit failed', err);
+          console.warn('fit failed', err);
         }
       });
     };
@@ -105,15 +112,13 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     const ro = new ResizeObserver(safeFit);
     ro.observe(host);
 
-    // Subscribe to live data BEFORE attach. The daemon forks the PTY at
-    // attach time (not at spawn time), so the prompt cannot arrive until
-    // after this listener exists.
     const offEvent = runner().daemon.onEvent((evt) => {
       if (evt.kind !== 'data' || evt.id !== sessionId) return;
-      term.write(evt.data);
+      safeWrite(evt.data);
     });
 
     const onInput = term.onData((data) => {
+      if (!isAlive()) return;
       runner().daemon.write(sessionId, data);
     });
 
@@ -123,32 +128,47 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
         id: sessionId,
       })
       .then((res) => {
-        // Only restored sessions return non-empty scrollback. For new
-        // spawns the daemon returns '' and all output arrives via events.
-        if (res?.scrollback) term.write(res.scrollback);
-        term.focus();
+        if (!isAlive()) return;
+        if (res?.scrollback) safeWrite(res.scrollback);
+        try {
+          term.focus();
+        } catch {
+          /* disposed during await */
+        }
       })
       .catch((err) => console.error('attach failed', err));
 
-    // mousedown anywhere in the pane: ensure xterm has focus so typing works
-    const onPaneDown = (): void => term.focus();
+    const onPaneDown = (): void => {
+      if (isAlive()) term.focus();
+    };
     host.addEventListener('mousedown', onPaneDown);
 
     return () => {
+      disposedRef.current = true;
       host.removeEventListener('mousedown', onPaneDown);
       ro.disconnect();
       offEvent();
       onInput.dispose();
-      term.dispose();
+      try {
+        term.dispose();
+      } catch {
+        /* ignore double-dispose */
+      }
+      if (termRef.current === term) termRef.current = null;
       void runner().daemon.request({ kind: 'detach', id: sessionId });
     };
   }, [sessionId]);
 
-  // Re-theme xterm when the resolved theme changes.
+  // Re-theme xterm when the resolved theme changes — but only if the
+  // terminal hasn't been disposed in between.
   useEffect(() => {
     const term = termRef.current;
-    if (!term) return;
-    term.options.theme = readThemeFromCss();
+    if (!term || disposedRef.current) return;
+    try {
+      term.options.theme = readThemeFromCss();
+    } catch (err) {
+      console.warn('retheme failed', err);
+    }
   }, [resolvedTheme]);
 
   return <div ref={hostRef} className="xterm-host" tabIndex={-1} />;
