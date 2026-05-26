@@ -1,10 +1,14 @@
 import { useSessions } from '../stores/sessions';
 import { useGit } from '../stores/git';
 import { runner } from '../api';
+import { useCommitDialog } from './CommitDialog';
+import { useBranchDialog } from './BranchDialog';
 
 export function TopBar(): JSX.Element {
   const focused = useSessions((s) => (s.focusedId ? s.sessions[s.focusedId] : null));
   const snapshots = useGit((s) => s.snapshots);
+  const showCommit = useCommitDialog((s) => s.show);
+  const showBranch = useBranchDialog((s) => s.show);
 
   const snap = focused
     ? Object.values(snapshots).find((sn) => sn.repoRoot && focused.cwd.startsWith(sn.repoRoot)) ??
@@ -12,7 +16,7 @@ export function TopBar(): JSX.Element {
     : null;
 
   const cwd = focused?.cwd ?? '';
-  const run = async (fn: () => Promise<unknown>) => {
+  const run = async (fn: () => Promise<unknown>): Promise<void> => {
     try {
       await fn();
       if (cwd) await useGit.getState().refresh(cwd);
@@ -42,10 +46,20 @@ export function TopBar(): JSX.Element {
         ⇡ Push
         {snap && snap.ahead > 0 ? <sup> {snap.ahead}</sup> : null}
       </button>
-      <button type="button" aria-label="Commit" disabled={!cwd}>
+      <button
+        type="button"
+        aria-label="Commit"
+        disabled={!cwd}
+        onClick={() => showCommit()}
+      >
         Commit
       </button>
-      <button type="button" aria-label="Branch" disabled={!cwd}>
+      <button
+        type="button"
+        aria-label="Branch"
+        disabled={!cwd}
+        onClick={() => showBranch()}
+      >
         Branch
       </button>
       <div className="spacer" />

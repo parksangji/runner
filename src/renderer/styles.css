@@ -211,6 +211,65 @@ button:focus-visible {
   width: 100%;
 }
 
+.right-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 6px;
+}
+
+.right-header h3 {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-dim);
+}
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.seg button {
+  border-radius: 0;
+  border: 0;
+  padding: 3px 10px;
+  font-size: 12px;
+  background: transparent;
+  color: var(--fg-dim);
+}
+
+.seg button + button {
+  border-left: 1px solid var(--border);
+}
+
+.seg button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.stage-actions {
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px 0;
+}
+
+.banner {
+  margin: 6px 12px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.banner.err {
+  background: rgba(248, 81, 73, 0.12);
+  color: var(--removed);
+  border: 1px solid rgba(248, 81, 73, 0.3);
+}
+
 .diff {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -240,4 +299,203 @@ button:focus-visible {
 .diff .line.del {
   background: rgba(248, 81, 73, 0.1);
   color: var(--removed);
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  width: min(560px, 92vw);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  max-height: 86vh;
+  overflow: hidden;
+}
+
+.modal header,
+.modal footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.modal header {
+  border-bottom: 1px solid var(--border);
+  justify-content: space-between;
+}
+
+.modal header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.modal footer {
+  border-top: 1px solid var(--border);
+  justify-content: flex-end;
+}
+
+.modal-body {
+  padding: 14px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field > span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-dim);
+}
+
+.field input,
+.field textarea {
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  font-family: var(--font-mono);
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.field-row {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+
+.field-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+button.primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.branch-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.branch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.branch-row .dot {
+  width: 10px;
+  color: var(--fg-dim);
+}
+
+.branch-row.current .dot {
+  color: var(--accent);
+}
+
+.branch-row.active {
+  background: var(--accent-soft);
+}
+
+.branch-row.hint {
+  color: var(--fg-dim);
+  font-style: italic;
+}
+
+/* Conflict banner */
+.banner.warn {
+  background: rgba(210, 153, 34, 0.12);
+  color: var(--warning);
+  border: 1px solid rgba(210, 153, 34, 0.35);
+}
+
+.conflict-panel {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.conflict-list {
+  list-style: none;
+  margin: 0 12px;
+  padding: 0;
+  border: 1px solid rgba(210, 153, 34, 0.35);
+  border-radius: 4px;
+  background: rgba(210, 153, 34, 0.05);
+}
+
+.conflict-list li {
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.conflict-list li.active {
+  background: rgba(210, 153, 34, 0.18);
+}
+
+.conflict-diff {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--bg);
+  color: var(--fg-dim);
+  border: 1px solid var(--border);
+  margin: 8px 12px 0;
+  padding: 6px 8px;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre;
+  border-radius: 4px;
 }

@@ -6,6 +6,7 @@ import { registerGitIpc } from './ipc/git';
 import { registerDaemonIpc } from './ipc/daemon';
 import { registerFsWatchIpc, disposeWatchers } from './ipc/fs-watch';
 import { registerStageHunksIpc } from './ipc/stage-hunks';
+import { registerPersistenceIpc } from './ipc/persistence';
 import { ensureDaemon, shutdownClient } from './daemon-supervisor';
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL;
@@ -53,6 +54,7 @@ app.whenReady().then(async () => {
   registerDaemonIpc(ipcMain);
   registerFsWatchIpc(ipcMain);
   registerStageHunksIpc(ipcMain);
+  registerPersistenceIpc(ipcMain);
   await createWindow();
 
   app.on('activate', async () => {

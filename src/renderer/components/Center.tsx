@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps } from 'dockview-react';
 import { useDockview } from '../stores/dockview';
 import { useSessions } from '../stores/sessions';
+import { useLayoutDock } from '../stores/layout';
 import { TerminalView } from './TerminalView';
 
 function TerminalPanel(props: IDockviewPanelProps<{ sessionId: string; cwd: string }>): JSX.Element {
@@ -23,18 +24,34 @@ const components = {
 export function Center(): JSX.Element {
   const setApi = useDockview((s) => s.setApi);
   const sessions = useSessions((s) => s.sessions);
-  // Sessions we have already placed into dockview. Owned by Center.
-  // createTerminal owns the placement of NEW sessions (so it can pick
-  // a split direction); this set lets the cleanup pass forget about
-  // those automatically. Initial hydration uses this to restore panels
-  // for daemon-survived sessions exactly once.
-  const placedRef = useRef<Set<string>>(new Set());
   const hydratedRef = useRef(false);
 
   const onReady = (event: DockviewReadyEvent): void => {
     setApi(event.api);
+
+    // Restore prior dockview layout, if any. Panels in the layout that no
+    // longer have a backing session will be culled by the hydration effect.
+    const saved = useLayoutDock.getState().lastSerialized;
+    if (saved && !useLayoutDock.getState().restored) {
+      try {
+        event.api.fromJSON(saved as never);
+      } catch (err) {
+        console.warn('layout restore failed, starting fresh', err);
+      }
+      useLayoutDock.getState().markRestored();
+    }
+
     event.api.onDidActivePanelChange((panel) => {
       if (panel) useSessions.getState().setFocus(panel.id);
+    });
+
+    event.api.onDidLayoutChange(() => {
+      try {
+        const data = event.api.toJSON();
+        useLayoutDock.getState().setSerialized(data);
+      } catch (err) {
+        console.error('serialize layout failed', err);
+      }
     });
   };
 
@@ -43,38 +60,39 @@ export function Center(): JSX.Element {
     if (!api) return;
     const known = new Set(Object.keys(sessions));
 
-    // One-shot: restore panels for sessions that were already running in the
-    // daemon when the renderer started. After this, panel creation is the
-    // sole responsibility of useDockview.createTerminal().
     if (!hydratedRef.current) {
-      for (const id of known) {
-        if (api.getPanel(id)) {
-          placedRef.current.add(id);
-          continue;
+      // First sync: panels that survived from a restored layout need their
+      // session-id to still exist; otherwise drop them. Then add panels for
+      // any daemon-restored sessions that the layout didn't already include.
+      for (const p of api.panels) {
+        if (!known.has(p.id)) {
+          try {
+            api.removePanel(p);
+          } catch {
+            /* ignore */
+          }
         }
-        const s = sessions[id]!;
-        try {
-          api.addPanel({
-            id,
-            component: 'terminal',
-            params: { sessionId: id, cwd: s.cwd },
-            title: s.cwd.split('/').slice(-2).join('/') || s.cwd,
-          });
-          placedRef.current.add(id);
-        } catch (err) {
-          console.error('hydrate panel failed', err);
+      }
+      for (const id of known) {
+        if (!api.getPanel(id)) {
+          const s = sessions[id]!;
+          try {
+            api.addPanel({
+              id,
+              component: 'terminal',
+              params: { sessionId: id, cwd: s.cwd },
+              title: s.cwd.split('/').slice(-2).join('/') || s.cwd,
+            });
+          } catch (err) {
+            console.error('hydrate panel failed', err);
+          }
         }
       }
       hydratedRef.current = true;
-    } else {
-      // Track newly added panels (created by createTerminal) so cleanup
-      // doesn't accidentally remove them.
-      for (const id of known) {
-        if (api.getPanel(id)) placedRef.current.add(id);
-      }
+      return;
     }
 
-    // Cleanup: remove panels whose backing session is gone.
+    // Steady state: drop panels whose session is gone.
     for (const p of api.panels) {
       if (!known.has(p.id)) {
         try {
@@ -82,7 +100,6 @@ export function Center(): JSX.Element {
         } catch {
           /* ignore */
         }
-        placedRef.current.delete(p.id);
       }
     }
   }, [sessions]);

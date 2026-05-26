@@ -1,5 +1,6 @@
 import type { DaemonEvent, DaemonRequest, SessionSummary } from '@shared/protocol';
 import type { GitSnapshot } from '@main/ipc/git';
+import type { StageHunksRequest } from '@main/ipc/stage-hunks';
 
 interface RunnerApi {
   daemon: {
@@ -22,6 +23,17 @@ interface RunnerApi {
       message: string,
       opts: { amend?: boolean; signoff?: boolean }
     ) => Promise<unknown>;
+    stageHunks: (req: StageHunksRequest) => Promise<{ ok: boolean; error?: string }>;
+  };
+  fs: {
+    watch: (root: string) => Promise<boolean>;
+    unwatch: (root: string) => Promise<boolean>;
+    onChanged: (cb: (root: string) => void) => () => void;
+  };
+  persist: {
+    read: (path: string) => Promise<string | null>;
+    write: (path: string, content: string) => Promise<boolean>;
+    paths: () => Promise<{ layout: string; pinned: string }>;
   };
   platform: NodeJS.Platform;
   env: { home: string; shell: string };

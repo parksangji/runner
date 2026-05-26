@@ -2,10 +2,16 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { DaemonEvent, DaemonRequest } from '@shared/protocol';
 
 type EventListener = (evt: DaemonEvent) => void;
+type FsListener = (root: string) => void;
 const listeners = new Set<EventListener>();
+const fsListeners = new Set<FsListener>();
 
 ipcRenderer.on('daemon:event', (_e, evt: DaemonEvent) => {
   for (const l of listeners) l(evt);
+});
+
+ipcRenderer.on('fs:changed', (_e, root: string) => {
+  for (const l of fsListeners) l(root);
 });
 
 const api = {
@@ -32,6 +38,22 @@ const api = {
     unstage: (cwd: string, files: string[]) => ipcRenderer.invoke('git:unstage', cwd, files),
     commit: (cwd: string, message: string, opts: { amend?: boolean; signoff?: boolean }) =>
       ipcRenderer.invoke('git:commit', cwd, message, opts),
+    stageHunks: (req: unknown) => ipcRenderer.invoke('git:stageHunks', req),
+  },
+  fs: {
+    watch: (root: string) => ipcRenderer.invoke('fs:watch', root),
+    unwatch: (root: string) => ipcRenderer.invoke('fs:unwatch', root),
+    onChanged: (cb: FsListener): (() => void) => {
+      fsListeners.add(cb);
+      return () => fsListeners.delete(cb);
+    },
+  },
+  persist: {
+    read: (path: string): Promise<string | null> => ipcRenderer.invoke('persist:read', path),
+    write: (path: string, content: string): Promise<boolean> =>
+      ipcRenderer.invoke('persist:write', path, content),
+    paths: (): Promise<{ layout: string; pinned: string }> =>
+      ipcRenderer.invoke('persist:paths'),
   },
   platform: process.platform,
   env: {
