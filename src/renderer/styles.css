@@ -1,0 +1,243 @@
+:root {
+  --bg: #0f1117;
+  --bg-elev: #161922;
+  --bg-elev-2: #1d2230;
+  --fg: #d6dbe5;
+  --fg-dim: #8a93a6;
+  --accent: #6aa7ff;
+  --accent-soft: rgba(106, 167, 255, 0.16);
+  --border: #232838;
+  --added: #2ea043;
+  --removed: #f85149;
+  --warning: #d29922;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7fa;
+    --bg-elev: #ffffff;
+    --bg-elev-2: #eef0f5;
+    --fg: #1c2230;
+    --fg-dim: #5a6374;
+    --accent: #1f6feb;
+    --accent-soft: rgba(31, 111, 235, 0.12);
+    --border: #d8dce6;
+    --added: #1a7f37;
+    --removed: #cf222e;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--bg-elev-2);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.app {
+  display: grid;
+  grid-template-rows: 40px 1fr;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
+
+.topbar > * {
+  -webkit-app-region: no-drag;
+}
+
+.topbar .brand {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--fg-dim);
+  margin-left: 64px;
+  margin-right: 16px;
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+.topbar .branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 240px 1fr 360px;
+  min-height: 0;
+}
+
+.sidebar {
+  background: var(--bg-elev);
+  border-right: 1px solid var(--border);
+  overflow: auto;
+  min-width: 0;
+}
+
+.sidebar.right {
+  border-right: 0;
+  border-left: 1px solid var(--border);
+}
+
+.sidebar h3 {
+  margin: 12px 12px 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-dim);
+}
+
+.sidebar .project {
+  padding: 6px 12px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+}
+
+.sidebar .project.active {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.sidebar .changed-file {
+  padding: 4px 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sidebar .changed-file:hover {
+  background: var(--bg-elev-2);
+}
+
+.sidebar .changed-file.selected {
+  background: var(--accent-soft);
+}
+
+.sidebar .changed-file .status {
+  width: 14px;
+  color: var(--fg-dim);
+}
+
+.sidebar .changed-file .status.M {
+  color: var(--warning);
+}
+
+.sidebar .changed-file .status.A {
+  color: var(--added);
+}
+
+.sidebar .changed-file .status.D {
+  color: var(--removed);
+}
+
+.center {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.center .empty {
+  margin: auto;
+  color: var(--fg-dim);
+  text-align: center;
+}
+
+.dock-host {
+  flex: 1;
+  min-height: 0;
+}
+
+.terminal-pane {
+  background: var(--bg);
+  height: 100%;
+  padding: 6px;
+}
+
+.terminal-pane .xterm-host {
+  height: 100%;
+  width: 100%;
+}
+
+.diff {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 8px;
+}
+
+.diff .hunk-header {
+  color: var(--fg-dim);
+  margin-top: 12px;
+}
+
+.diff .line {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  white-space: pre;
+}
+
+.diff .line input {
+  margin: 0 4px 0 0;
+}
+
+.diff .line.add {
+  background: rgba(46, 160, 67, 0.1);
+  color: var(--added);
+}
+
+.diff .line.del {
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--removed);
+}
