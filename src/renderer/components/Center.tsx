@@ -5,12 +5,23 @@ import { useSessions } from '../stores/sessions';
 import { useLayoutDock } from '../stores/layout';
 import { TerminalView } from './TerminalView';
 
+function focusXtermIn(root: HTMLElement | null): void {
+  if (!root) return;
+  const ta = root.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement | null;
+  ta?.focus();
+}
+
 function TerminalPanel(props: IDockviewPanelProps<{ sessionId: string; cwd: string }>): JSX.Element {
   const { sessionId } = props.params;
   return (
     <div
       className="terminal-pane"
-      onMouseDown={() => useSessions.getState().setFocus(sessionId)}
+      onMouseDown={(e) => {
+        useSessions.getState().setFocus(sessionId);
+        // Any click within the pane (including on a non-xterm child) should
+        // park keyboard focus on this terminal's textarea so typing works.
+        focusXtermIn(e.currentTarget);
+      }}
     >
       <TerminalView sessionId={sessionId} />
     </div>
@@ -42,7 +53,15 @@ export function Center(): JSX.Element {
     }
 
     event.api.onDidActivePanelChange((panel) => {
-      if (panel) useSessions.getState().setFocus(panel.id);
+      if (!panel) return;
+      useSessions.getState().setFocus(panel.id);
+      // dockview parks DOM focus on the tab button after switching panels;
+      // explicitly pull keyboard focus down into the new panel's xterm
+      // textarea on the next frame, after dockview has finished its swap.
+      requestAnimationFrame(() => {
+        const groupEl = (panel as unknown as { group?: { element?: HTMLElement } }).group?.element;
+        focusXtermIn(groupEl ?? null);
+      });
     });
 
     event.api.onDidLayoutChange(() => {
