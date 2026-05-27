@@ -1,5 +1,6 @@
 import { useTheme, type ThemeMode } from '../stores/theme';
 import { useConnection } from '../stores/connection';
+import { useSettingsDialog } from './SettingsDialog';
 
 const OPTIONS: { mode: ThemeMode; icon: string; label: string }[] = [
   { mode: 'light', icon: '☀', label: 'Light' },
@@ -37,6 +38,7 @@ function ConnectionPill(): JSX.Element | null {
 export function TopBar(): JSX.Element {
   const mode = useTheme((s) => s.mode);
   const setMode = useTheme((s) => s.setMode);
+  const openSettings = useSettingsDialog((s) => s.show);
 
   // Git actions (Pull/Push/Commit/Branch) live per-directory in the Changes
   // panel, so the top bar carries the window-drag region, brand, and the
@@ -60,6 +62,15 @@ export function TopBar(): JSX.Element {
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        className="topbar-settings"
+        aria-label="Settings"
+        title="Settings (⌘,)"
+        onClick={openSettings}
+      >
+        ⚙
+      </button>
     </header>
   );
 }

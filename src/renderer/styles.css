@@ -21,6 +21,9 @@
   --warning-soft: color-mix(in srgb, var(--warning) 14%, transparent);
   --warning-line: color-mix(in srgb, var(--warning) 34%, transparent);
   --warning-faint: color-mix(in srgb, var(--warning) 6%, transparent);
+  /* xterm's color parser can't read color-mix(); selection needs an explicit
+     rgba or it falls back to (near-)transparent — hence its own variable. */
+  --term-selection: rgba(106, 167, 255, 0.35);
   --syn-keyword: #ff7b72;
   --syn-string: #a5d6ff;
   --syn-number: #79c0ff;
@@ -41,6 +44,7 @@
   --fg-dim: #5a6374;
   --accent: #1f6feb;
   --border: #d8dce6;
+  --term-selection: rgba(31, 111, 235, 0.28);
   --added: #1a7f37;
   --removed: #cf222e;
   --syn-keyword: #cf222e;
@@ -200,6 +204,23 @@ button:focus-visible {
 .theme-switch button.active {
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+.topbar-settings {
+  margin-left: 8px;
+  width: 28px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg-dim);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.topbar-settings:hover {
+  background: var(--bg-elev-2);
+  color: var(--fg);
 }
 
 .topbar .branch {
@@ -1072,6 +1093,7 @@ button:focus-visible {
 }
 
 .field input,
+.field select,
 .field textarea {
   background: var(--bg);
   color: var(--fg);
@@ -1080,6 +1102,16 @@ button:focus-visible {
   padding: 6px 8px;
   font: inherit;
   font-family: var(--font-mono);
+}
+
+.field input[type='range'] {
+  padding: 0;
+  border: 0;
+  accent-color: var(--accent);
+}
+
+.field input[type='checkbox'] {
+  padding: 0;
 }
 
 .field textarea {

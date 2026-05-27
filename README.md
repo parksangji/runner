@@ -18,6 +18,7 @@ alive even after you close and reopen the window.
 - **Conflict resolution** — merge/rebase progress indicator with Continue / Abort
 - **Terminal search** — incremental find-in-terminal (⌘F) over the scrollback
 - **Auto-update** — checks GitHub Releases on launch and offers the new build (notify-style, no signing required)
+- **Settings** — adjustable terminal font size/family, cursor blink, and scrollback (⌘,), applied live
 - **Themes** — light / dark / system
 
 ### Light and dark themes
@@ -60,6 +61,12 @@ npm run gen:icon   # regenerate the app icon from the pixel sprite
 npm run package    # package the app
 ```
 
+`npm run dev` hot-reloads the renderer and auto-restarts on main/preload
+changes. It runs against an **isolated data dir** (`~/.runner-dev` — its own
+daemon socket, sessions, and layout) so you can keep using an installed
+`Runner.app` as your daily driver while developing alongside it. Override the
+location with `RUNNER_DATA_DIR=/some/path`.
+
 ## Install as a Mac app & updates
 
 Build a local `.app` / `.dmg`:
@@ -98,3 +105,4 @@ step.
 | ⌘B | Toggle Changes panel |
 | ⌘F | Find in terminal |
 | ⌘K | Command palette |
+| ⌘, | Settings |

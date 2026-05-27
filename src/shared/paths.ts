@@ -2,6 +2,12 @@ import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
 
 export function appDataDir(): string {
+  // Allow a dev/test instance to run against an isolated data dir (own daemon
+  // socket, pid, sessions) so it doesn't clash with an installed Runner.app
+  // that's running at the same time. Set by the `dev` npm script.
+  const override = process.env.RUNNER_DATA_DIR;
+  if (override && override.trim()) return override;
+
   const home = homedir();
   switch (platform()) {
     case 'darwin':
