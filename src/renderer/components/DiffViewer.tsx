@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import type { SelectionLine } from '@main/ipc/stage-hunks';
+import { highlightLine, languageFor } from '../highlight';
 
 export interface Hunk {
   header: string;
@@ -41,14 +42,17 @@ export function parseDiffForView(raw: string): Hunk[] {
 
 interface Props {
   raw: string;
+  /** Path of the file being diffed; drives syntax-highlight language. */
+  filename?: string;
   /** Called with the user-selected set of mutating lines. */
   onSelectionChange?: (selection: SelectionLine[]) => void;
   /** Reset selection (e.g., when file or staged-side changes). */
   resetKey?: string;
 }
 
-export function DiffViewer({ raw, onSelectionChange, resetKey }: Props): JSX.Element {
+export function DiffViewer({ raw, filename, onSelectionChange, resetKey }: Props): JSX.Element {
   const hunks = useMemo(() => parseDiffForView(raw), [raw]);
+  const lang = useMemo(() => (filename ? languageFor(filename) : null), [filename]);
   // Selection map: hunkIndex -> Set<lineIndex>
   const [selection, setSelection] = useState<Record<number, Set<number>>>({});
 
@@ -103,7 +107,7 @@ export function DiffViewer({ raw, onSelectionChange, resetKey }: Props): JSX.Ele
   if (hunks.length === 0) {
     return (
       <div className="diff" style={{ color: 'var(--fg-dim)' }}>
-        변경 없음
+        No changes
       </div>
     );
   }
@@ -147,9 +151,12 @@ export function DiffViewer({ raw, onSelectionChange, resetKey }: Props): JSX.Ele
                       />
                     ) : null}
                   </span>
-                  <span>
-                    {l.kind}
-                    {l.text}
+                  <span className="line-text">
+                    <span className="line-sign">{l.kind}</span>
+                    <code
+                      className="hljs"
+                      dangerouslySetInnerHTML={{ __html: highlightLine(l.text, lang) }}
+                    />
                   </span>
                 </label>
               );

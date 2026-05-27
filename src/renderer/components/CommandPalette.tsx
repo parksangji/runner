@@ -7,6 +7,8 @@ import { useTheme, type ThemeMode } from '../stores/theme';
 import { useCommitDialog } from './CommitDialog';
 import { useBranchDialog } from './BranchDialog';
 import { useSessions } from '../stores/sessions';
+import { useGit } from '../stores/git';
+import { toastError } from '../stores/toast';
 import { runner } from '../api';
 
 interface PaletteState {
@@ -108,7 +110,9 @@ function buildCommands(): Command[] {
       group: 'Git',
       run: async () => {
         const cwd = useSessions.getState().sessions[useSessions.getState().focusedId ?? '']?.cwd;
-        if (cwd) await runner().git.pull(cwd);
+        if (!cwd) return;
+        await runner().git.pull(cwd);
+        await useGit.getState().refresh(cwd);
       },
     },
     {
@@ -117,7 +121,9 @@ function buildCommands(): Command[] {
       group: 'Git',
       run: async () => {
         const cwd = useSessions.getState().sessions[useSessions.getState().focusedId ?? '']?.cwd;
-        if (cwd) await runner().git.push(cwd);
+        if (!cwd) return;
+        await runner().git.push(cwd);
+        await useGit.getState().refresh(cwd);
       },
     },
     ...(['system', 'light', 'dark'] as ThemeMode[]).map<Command>((m) => ({
@@ -192,6 +198,7 @@ export function CommandPalette(): JSX.Element | null {
       await cmd.run();
     } catch (err) {
       console.error('command failed', cmd.id, err);
+      toastError(`${cmd.title} failed`, err);
     }
   };
 

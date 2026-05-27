@@ -259,3 +259,5 @@ export function registerGitIpc(ipc: IpcMain): void {
     }
   );
 }
+
+export const __test__ = { plainStatus };

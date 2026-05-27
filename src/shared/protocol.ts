@@ -41,6 +41,9 @@ export type DaemonEvent =
   | { kind: 'cwd'; id: SessionId; cwd: string }
   | { kind: 'title'; id: SessionId; title: string };
 
+/** Health of the renderer→main→daemon socket link, surfaced in the UI. */
+export type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected';
+
 export interface RpcEnvelope {
   id?: number;
   req?: DaemonRequest;
