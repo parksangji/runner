@@ -227,9 +227,38 @@ button:focus-visible {
 }
 
 .sidebar .changed-file .file-path {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sidebar .changed-file .file-action {
+  flex: none;
+  visibility: hidden;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-dim);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sidebar .changed-file:hover .file-action {
+  visibility: visible;
+}
+
+.sidebar .changed-file .file-action:hover {
+  background: var(--bg-elev-2);
+  color: var(--fg);
+}
+
+.sidebar .changed-file .file-action.danger:hover {
+  color: var(--removed);
 }
 
 /* Changes panel — per-directory git groups */
@@ -715,6 +744,49 @@ button.primary:disabled {
   font-style: italic;
 }
 
+.commit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 60vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.commit-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.commit-row:last-child {
+  border-bottom: none;
+}
+
+.commit-hash {
+  flex: none;
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+
+.commit-msg {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-meta {
+  flex: none;
+  color: var(--fg-dim);
+  font-size: 11px;
+}
+
 /* Conflict banner */
 .banner.warn {
   background: rgba(210, 153, 34, 0.12);
@@ -759,6 +831,48 @@ button.primary:disabled {
   overflow: auto;
   white-space: pre;
   border-radius: 4px;
+}
+
+.banner.ok {
+  background: rgba(46, 160, 67, 0.12);
+  color: var(--added);
+  border: 1px solid rgba(46, 160, 67, 0.35);
+}
+
+.conflict-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 12px;
+}
+
+.conflict-actions .op-tag {
+  flex: 1;
+  font-size: 11px;
+  color: var(--fg-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.conflict-actions button {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev-2);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.conflict-actions button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.conflict-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Command Palette */

@@ -27,7 +27,7 @@ export function registerFsWatchIpc(ipc: IpcMain): void {
     if (watchers.has(root)) return true;
     const watcher = chokidar.watch(root, {
       ignored: [
-        /(^|[\/\\])\../, // hidden files / .git
+        /(^|[/\\])\../, // hidden files / .git
         /node_modules/,
         /dist/,
         /out/,

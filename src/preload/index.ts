@@ -38,12 +38,16 @@ const api = {
     diff: (cwd: string, file: string, staged: boolean) =>
       ipcRenderer.invoke('git:diff', cwd, file, staged),
     branches: (cwd: string) => ipcRenderer.invoke('git:branches', cwd),
+    log: (cwd: string, limit?: number) => ipcRenderer.invoke('git:log', cwd, limit),
     checkout: (cwd: string, branch: string, create: boolean) =>
       ipcRenderer.invoke('git:checkout', cwd, branch, create),
     pull: (cwd: string) => ipcRenderer.invoke('git:pull', cwd),
     push: (cwd: string) => ipcRenderer.invoke('git:push', cwd),
     stage: (cwd: string, files: string[]) => ipcRenderer.invoke('git:stage', cwd, files),
     unstage: (cwd: string, files: string[]) => ipcRenderer.invoke('git:unstage', cwd, files),
+    discard: (cwd: string, files: string[]) => ipcRenderer.invoke('git:discard', cwd, files),
+    abort: (cwd: string) => ipcRenderer.invoke('git:abort', cwd),
+    continue: (cwd: string) => ipcRenderer.invoke('git:continue', cwd),
     commit: (cwd: string, message: string, opts: { amend?: boolean; signoff?: boolean }) =>
       ipcRenderer.invoke('git:commit', cwd, message, opts),
     stageHunks: (req: unknown) => ipcRenderer.invoke('git:stageHunks', req),

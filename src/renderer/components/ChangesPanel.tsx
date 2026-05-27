@@ -5,6 +5,7 @@ import { useGit } from '../stores/git';
 import { useProjects } from '../stores/projects';
 import { useCommitDialog } from './CommitDialog';
 import { useBranchDialog } from './BranchDialog';
+import { useLogDialog } from './LogDialog';
 import { runner } from '../api';
 import { ConflictPanel } from './ConflictPanel';
 
@@ -88,6 +89,9 @@ function RepoGroup({ snap, staged }: { snap: GitSnapshot; staged: boolean }): JS
           <button type="button" aria-label="Branch" title="Branch" onClick={() => useBranchDialog.getState().show(repoRoot)}>
             ⎇
           </button>
+          <button type="button" aria-label="History" title="History" onClick={() => useLogDialog.getState().show(repoRoot)}>
+            🕑
+          </button>
         </div>
       </div>
 
@@ -112,6 +116,35 @@ function RepoGroup({ snap, staged }: { snap: GitSnapshot; staged: boolean }): JS
           >
             <span className={`status ${f.kind}`}>{f.kind}</span>
             <span className="file-path">{f.path}</span>
+            {staged ? (
+              <button
+                type="button"
+                className="file-action"
+                title="Unstage"
+                aria-label={`Unstage ${f.path}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void runGit('Unstage', () => runner().git.unstage(repoRoot, [f.path]));
+                }}
+              >
+                −
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="file-action danger"
+                title="Discard changes"
+                aria-label={`Discard changes to ${f.path}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`${f.path}의 변경을 버립니다. 되돌릴 수 없습니다. 계속할까요?`)) {
+                    void runGit('Discard', () => runner().git.discard(repoRoot, [f.path]));
+                  }
+                }}
+              >
+                ↺
+              </button>
+            )}
           </div>
         ))
       )}
