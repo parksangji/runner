@@ -1,4 +1,4 @@
-import type { DaemonEvent, DaemonRequest, SessionSummary } from '@shared/protocol';
+import type { ConnectionStatus, DaemonEvent, DaemonRequest, SessionSummary } from '@shared/protocol';
 import type { GitCommit, GitSnapshot } from '@main/ipc/git';
 import type { StageHunksRequest } from '@main/ipc/stage-hunks';
 
@@ -10,6 +10,7 @@ interface RunnerApi {
     write: (id: string, data: string) => void;
     resize: (id: string, cols: number, rows: number) => void;
     onEvent: (cb: (evt: DaemonEvent) => void) => () => void;
+    onStatus: (cb: (status: ConnectionStatus) => void) => () => void;
   };
   git: {
     snapshot: (cwd: string) => Promise<GitSnapshot>;

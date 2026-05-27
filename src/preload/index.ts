@@ -1,13 +1,19 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DaemonEvent, DaemonRequest } from '@shared/protocol';
+import type { ConnectionStatus, DaemonEvent, DaemonRequest } from '@shared/protocol';
 
 type EventListener = (evt: DaemonEvent) => void;
 type FsListener = (root: string) => void;
+type StatusListener = (status: ConnectionStatus) => void;
 const listeners = new Set<EventListener>();
 const fsListeners = new Set<FsListener>();
+const statusListeners = new Set<StatusListener>();
 
 ipcRenderer.on('daemon:event', (_e, evt: DaemonEvent) => {
   for (const l of listeners) l(evt);
+});
+
+ipcRenderer.on('daemon:status', (_e, status: ConnectionStatus) => {
+  for (const l of statusListeners) l(status);
 });
 
 ipcRenderer.on('fs:changed', (_e, root: string) => {
@@ -31,6 +37,10 @@ const api = {
     onEvent: (cb: EventListener): (() => void) => {
       listeners.add(cb);
       return () => listeners.delete(cb);
+    },
+    onStatus: (cb: StatusListener): (() => void) => {
+      statusListeners.add(cb);
+      return () => statusListeners.delete(cb);
     },
   },
   git: {

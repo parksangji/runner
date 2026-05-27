@@ -10,6 +10,13 @@
   --added: #2ea043;
   --removed: #f85149;
   --warning: #d29922;
+  --syn-keyword: #ff7b72;
+  --syn-string: #a5d6ff;
+  --syn-number: #79c0ff;
+  --syn-comment: #8b949e;
+  --syn-function: #d2a8ff;
+  --syn-type: #ffa657;
+  --syn-attr: #7ee787;
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -26,6 +33,13 @@
   --border: #d8dce6;
   --added: #1a7f37;
   --removed: #cf222e;
+  --syn-keyword: #cf222e;
+  --syn-string: #0a3069;
+  --syn-number: #0550ae;
+  --syn-comment: #6e7781;
+  --syn-function: #8250df;
+  --syn-type: #953800;
+  --syn-attr: #116329;
 }
 
 * {
@@ -94,6 +108,61 @@ button:focus-visible {
 
 .topbar .spacer {
   flex: 1;
+}
+
+/* Daemon connection status — hidden while healthy (see ConnectionPill). */
+.conn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 11px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.conn-pill.reconnecting {
+  background: rgba(210, 153, 34, 0.12);
+  color: var(--warning);
+  border-color: rgba(210, 153, 34, 0.35);
+}
+
+.conn-pill.disconnected {
+  background: rgba(248, 81, 73, 0.12);
+  color: var(--removed);
+  border-color: rgba(248, 81, 73, 0.35);
+}
+
+.conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.conn-pill.reconnecting .conn-dot {
+  animation: conn-blink 1s ease-in-out infinite;
+}
+
+@keyframes conn-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.conn-retry {
+  margin-left: 4px;
+  padding: 1px 8px;
+  border-radius: 5px;
+  border: 1px solid currentColor;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.conn-retry:hover {
+  background: rgba(248, 81, 73, 0.15);
 }
 
 .theme-switch {
@@ -560,6 +629,73 @@ button:focus-visible {
   border: 1px solid rgba(248, 81, 73, 0.3);
 }
 
+/* Toast notifications (bottom-right stack) */
+.toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--bg-elev-2);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  animation: toast-in 120ms ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.toast.error {
+  background: rgba(248, 81, 73, 0.14);
+  color: var(--removed);
+  border-color: rgba(248, 81, 73, 0.4);
+}
+
+.toast.success {
+  background: rgba(46, 160, 67, 0.14);
+  color: var(--added);
+  border-color: rgba(46, 160, 67, 0.4);
+}
+
+.toast-msg {
+  flex: 1;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.toast-close {
+  flex: none;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.6;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px;
+}
+
+.toast-close:hover {
+  opacity: 1;
+}
+
 .diff {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -581,14 +717,76 @@ button:focus-visible {
   margin: 0 4px 0 0;
 }
 
+.diff .line-text {
+  display: inline;
+}
+
+.diff .line-sign {
+  user-select: none;
+}
+
+/* Syntax-highlighted code keeps its token colors; the add/del signal is the
+   background tint plus the +/- sign, not a blanket text color. */
+.diff .line code.hljs {
+  background: none;
+  padding: 0;
+  color: var(--fg);
+  font: inherit;
+}
+
 .diff .line.add {
   background: rgba(46, 160, 67, 0.1);
+}
+
+.diff .line.add .line-sign {
   color: var(--added);
 }
 
 .diff .line.del {
   background: rgba(248, 81, 73, 0.1);
+}
+
+.diff .line.del .line-sign {
   color: var(--removed);
+}
+
+/* highlight.js token → theme variable mapping */
+.diff .hljs-keyword,
+.diff .hljs-built_in,
+.diff .hljs-literal,
+.diff .hljs-selector-tag {
+  color: var(--syn-keyword);
+}
+.diff .hljs-string,
+.diff .hljs-regexp,
+.diff .hljs-meta .hljs-string {
+  color: var(--syn-string);
+}
+.diff .hljs-number,
+.diff .hljs-symbol {
+  color: var(--syn-number);
+}
+.diff .hljs-comment,
+.diff .hljs-quote {
+  color: var(--syn-comment);
+  font-style: italic;
+}
+.diff .hljs-title,
+.diff .hljs-title.function_,
+.diff .hljs-section {
+  color: var(--syn-function);
+}
+.diff .hljs-type,
+.diff .hljs-class .hljs-title,
+.diff .hljs-title.class_,
+.diff .hljs-params {
+  color: var(--syn-type);
+}
+.diff .hljs-attr,
+.diff .hljs-attribute,
+.diff .hljs-name,
+.diff .hljs-tag {
+  color: var(--syn-attr);
 }
 
 /* Modal */

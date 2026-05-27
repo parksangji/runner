@@ -1,7 +1,7 @@
 import { BrowserWindow, type IpcMain } from 'electron';
-import { ensureDaemon, getClient } from '../daemon-supervisor';
+import { ensureDaemon, getClient, isShuttingDown } from '../daemon-supervisor';
 import type { DaemonClient } from '../daemon-client';
-import type { DaemonEvent, DaemonRequest, SessionId } from '@shared/protocol';
+import type { ConnectionStatus, DaemonEvent, DaemonRequest, SessionId } from '@shared/protocol';
 
 // The client instance we've attached the event forwarder to. ensureDaemon()
 // can hand back a *new* client after a reconnect (e.g. the daemon was killed
@@ -9,6 +9,7 @@ import type { DaemonEvent, DaemonRequest, SessionId } from '@shared/protocol';
 // dead client, so live events (cwd/exit/…) would silently stop reaching the
 // renderer. Track the instance instead and re-attach whenever it changes.
 let forwarderClient: DaemonClient | null = null;
+let reconnecting = false;
 
 function broadcast(evt: DaemonEvent): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -16,10 +17,48 @@ function broadcast(evt: DaemonEvent): void {
   }
 }
 
+function broadcastStatus(status: ConnectionStatus): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('daemon:status', status);
+  }
+}
+
 function ensureForwarder(client: DaemonClient): void {
   if (forwarderClient === client) return;
   client.on('event', (evt: DaemonEvent) => broadcast(evt));
+  // The socket dropped (daemon crashed/restarted, machine slept, …). The
+  // daemon keeps PTYs alive, so reconnecting a fresh socket resumes live
+  // output; we just need to re-establish it and re-attach this forwarder.
+  client.on('close', () => {
+    if (isShuttingDown() || forwarderClient !== client) return;
+    forwarderClient = null;
+    broadcastStatus('reconnecting');
+    void reconnectLoop();
+  });
   forwarderClient = client;
+  broadcastStatus('connected');
+}
+
+// Reconnect with capped exponential backoff. After exhausting attempts we
+// surface 'disconnected' and stop — the renderer offers a manual Reconnect.
+async function reconnectLoop(): Promise<void> {
+  if (reconnecting) return;
+  reconnecting = true;
+  let delay = 250;
+  try {
+    for (let attempt = 0; attempt < 12 && !isShuttingDown(); attempt++) {
+      await new Promise((r) => setTimeout(r, delay));
+      try {
+        ensureForwarder(await ensureDaemon());
+        return;
+      } catch {
+        delay = Math.min(delay * 2, 3000);
+      }
+    }
+    if (!isShuttingDown()) broadcastStatus('disconnected');
+  } finally {
+    reconnecting = false;
+  }
 }
 
 export function registerDaemonIpc(ipc: IpcMain): void {
@@ -35,7 +74,13 @@ export function registerDaemonIpc(ipc: IpcMain): void {
   });
 
   ipc.handle('daemon:reconnect', async () => {
-    getClient().close();
+    broadcastStatus('reconnecting');
+    forwarderClient = null;
+    try {
+      getClient().close();
+    } catch {
+      /* no client yet — ensureDaemon will create one */
+    }
     ensureForwarder(await ensureDaemon());
     return true;
   });

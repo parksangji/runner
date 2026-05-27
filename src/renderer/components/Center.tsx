@@ -39,12 +39,12 @@ const mod = isMac ? '⌘' : 'Ctrl';
 const shift = isMac ? '⇧' : 'Shift';
 
 const SHORTCUTS: { keys: string; label: string }[] = [
-  { keys: `${mod}T`, label: '새 터미널' },
-  { keys: `${mod}D`, label: '오른쪽으로 분할' },
-  { keys: `${mod}${shift}D`, label: '아래로 분할' },
-  { keys: `${mod}W`, label: '현재 터미널 닫기' },
-  { keys: `${mod}B`, label: '변경내역 패널 토글' },
-  { keys: `${mod}K`, label: '커맨드 팔레트' },
+  { keys: `${mod}T`, label: 'New terminal' },
+  { keys: `${mod}D`, label: 'Split right' },
+  { keys: `${mod}${shift}D`, label: 'Split down' },
+  { keys: `${mod}W`, label: 'Close terminal' },
+  { keys: `${mod}B`, label: 'Toggle Changes panel' },
+  { keys: `${mod}K`, label: 'Command palette' },
 ];
 
 function Welcome(): JSX.Element {
@@ -52,13 +52,13 @@ function Welcome(): JSX.Element {
     <div className="welcome">
       <div className="welcome-card">
         <h1>runner</h1>
-        <p className="welcome-sub">Claude Code 워크벤치 — 멀티 터미널 + git</p>
+        <p className="welcome-sub">Claude Code workbench — multi-terminal + git</p>
         <button
           type="button"
           className="welcome-cta"
           onClick={() => void useDockview.getState().createTerminal()}
         >
-          {mod}T &nbsp;새 터미널 열기
+          {mod}T &nbsp;Open a new terminal
         </button>
         <ul className="welcome-keys">
           {SHORTCUTS.map((s) => (

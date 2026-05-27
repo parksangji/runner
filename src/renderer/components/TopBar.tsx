@@ -1,10 +1,38 @@
 import { useTheme, type ThemeMode } from '../stores/theme';
+import { useConnection } from '../stores/connection';
 
 const OPTIONS: { mode: ThemeMode; icon: string; label: string }[] = [
   { mode: 'light', icon: '☀', label: 'Light' },
   { mode: 'dark', icon: '☾', label: 'Dark' },
   { mode: 'system', icon: '🖥', label: 'System' },
 ];
+
+function ConnectionPill(): JSX.Element | null {
+  const status = useConnection((s) => s.status);
+  const reconnect = useConnection((s) => s.reconnect);
+
+  // Stay out of the way while the link is healthy.
+  if (status === 'connected') return null;
+
+  return (
+    <div className={`conn-pill ${status}`} role="status" aria-live="polite">
+      {status === 'reconnecting' ? (
+        <>
+          <span className="conn-dot" />
+          Reconnecting…
+        </>
+      ) : (
+        <>
+          <span className="conn-dot" />
+          Disconnected
+          <button type="button" className="conn-retry" onClick={() => void reconnect()}>
+            Reconnect
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function TopBar(): JSX.Element {
   const mode = useTheme((s) => s.mode);
@@ -16,6 +44,7 @@ export function TopBar(): JSX.Element {
   return (
     <header className="topbar" role="banner">
       <span className="brand">runner</span>
+      <ConnectionPill />
       <div className="spacer" />
       <div className="theme-switch" role="group" aria-label="Theme">
         {OPTIONS.map((o) => (

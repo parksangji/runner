@@ -65,7 +65,7 @@ function RepoGroup({ snap, staged }: { snap: GitSnapshot; staged: boolean }): JS
       await fn();
       await refresh(repoRoot);
     } catch (err) {
-      setError(`${label} 실패: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`${label} failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -104,7 +104,7 @@ function RepoGroup({ snap, staged }: { snap: GitSnapshot; staged: boolean }): JS
       <ConflictPanel snapshot={snap} cwd={repoRoot} />
 
       {files.length === 0 ? (
-        <div className="repo-empty">변경 없음</div>
+        <div className="repo-empty">No changes</div>
       ) : (
         files.map((f) => (
           <div
@@ -137,7 +137,7 @@ function RepoGroup({ snap, staged }: { snap: GitSnapshot; staged: boolean }): JS
                 aria-label={`Discard changes to ${f.path}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (window.confirm(`${f.path}의 변경을 버립니다. 되돌릴 수 없습니다. 계속할까요?`)) {
+                  if (window.confirm(`Discard changes to ${f.path}? This cannot be undone.`)) {
                     void runGit('Discard', () => runner().git.discard(repoRoot, [f.path]));
                   }
                 }}
@@ -213,7 +213,7 @@ export function ChangesPanel(): JSX.Element {
 
       {repos.length === 0 ? (
         <div className="empty" style={{ padding: 12, color: 'var(--fg-dim)' }}>
-          git 저장소가 있는 터미널을 열면 여기에 표시됩니다
+          Open a terminal in a git repository to see changes here
         </div>
       ) : (
         repos.map((snap) => (

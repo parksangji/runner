@@ -6,6 +6,13 @@ import { DAEMON_PID, DAEMON_SOCKET } from '@shared/paths';
 import { DaemonClient } from './daemon-client';
 
 let client: DaemonClient | null = null;
+let shuttingDown = false;
+
+/** True once the app has begun quitting. The auto-reconnect loop checks this so
+ *  it doesn't respawn the daemon (or fight the socket teardown) during exit. */
+export function isShuttingDown(): boolean {
+  return shuttingDown;
+}
 
 function isAlive(pid: number): boolean {
   try {
@@ -80,6 +87,10 @@ export function shutdownClient(): void {
   client?.close();
   client = null;
 }
+
+app.on('before-quit', () => {
+  shuttingDown = true;
+});
 
 app.on('will-quit', () => {
   shutdownClient();

@@ -49,7 +49,7 @@ export function ConflictPanel({ snapshot, cwd }: Props): JSX.Element | null {
       await fn();
       await refresh(cwd);
     } catch (err) {
-      setError(`${label} 실패: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`${label} failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(false);
     }
@@ -88,7 +88,7 @@ export function ConflictPanel({ snapshot, cwd }: Props): JSX.Element | null {
             disabled={busy}
             title={`Abort ${opLabel}`}
             onClick={() => {
-              if (window.confirm(`${opLabel}를 중단하고 이전 상태로 되돌립니다. 계속할까요?`)) {
+              if (window.confirm(`Abort the ${opLabel.toLowerCase()} and restore the previous state?`)) {
                 void run('Abort', () => runner().git.abort(cwd));
               }
             }}

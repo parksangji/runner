@@ -104,9 +104,9 @@ export function LogDialog(): JSX.Element | null {
             </div>
           ) : null}
           {loading ? (
-            <div className="empty">불러오는 중…</div>
+            <div className="empty">Loading…</div>
           ) : commits.length === 0 ? (
-            <div className="empty">커밋이 없습니다</div>
+            <div className="empty">No commits</div>
           ) : (
             <ul className="commit-list" role="list" aria-label="Commits">
               {commits.map((c) => (

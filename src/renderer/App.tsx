@@ -6,8 +6,10 @@ import { CommitDialog } from './components/CommitDialog';
 import { BranchDialog } from './components/BranchDialog';
 import { LogDialog } from './components/LogDialog';
 import { CommandPalette } from './components/CommandPalette';
+import { Toasts } from './components/Toasts';
 import { useTheme } from './stores/theme';
 import { useSessions, bindDaemonEvents } from './stores/sessions';
+import { bindConnectionStatus } from './stores/connection';
 import { useGit } from './stores/git';
 import { useProjects } from './stores/projects';
 import { useLayoutPrefs } from './stores/layout';
@@ -39,6 +41,7 @@ export function App(): JSX.Element {
   // Bootstrap: load persisted prefs/pins first, then attach to daemon sessions.
   useEffect(() => {
     let off: (() => void) | null = null;
+    const offStatus = bindConnectionStatus();
     (async () => {
       await Promise.all([loadPrefs(), loadPinned()]);
       await hydrate();
@@ -46,6 +49,7 @@ export function App(): JSX.Element {
     })();
     return () => {
       off?.();
+      offStatus();
     };
   }, [loadPrefs, loadPinned, hydrate]);
 
@@ -148,6 +152,7 @@ export function App(): JSX.Element {
       <BranchDialog />
       <LogDialog />
       <CommandPalette />
+      <Toasts />
     </div>
   );
 }

@@ -105,7 +105,7 @@ export function DiffOverlay(): JSX.Element | null {
           <button type="button" disabled={busy} onClick={() => void stageWholeFile()}>
             {staged ? 'Unstage file' : 'Stage file'}
           </button>
-          <button type="button" className="diff-close" aria-label="Close diff" title="닫기" onClick={close}>
+          <button type="button" className="diff-close" aria-label="Close diff" title="Close" onClick={close}>
             ✕
           </button>
         </div>
@@ -116,7 +116,7 @@ export function DiffOverlay(): JSX.Element | null {
         </div>
       ) : null}
       <div className="diff-overlay-body">
-        <DiffViewer raw={diff} onSelectionChange={setSelection} resetKey={resetKey} />
+        <DiffViewer raw={diff} filename={selectedFile} onSelectionChange={setSelection} resetKey={resetKey} />
       </div>
     </div>
   );
