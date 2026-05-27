@@ -14,6 +14,7 @@ import { useGit } from './stores/git';
 import { useProjects } from './stores/projects';
 import { useLayoutPrefs } from './stores/layout';
 import { useGlobalHotkeys } from './hooks/useHotkeys';
+import { useToasts } from './stores/toast';
 import { runner } from './api';
 
 export function App(): JSX.Element {
@@ -99,6 +100,25 @@ export function App(): JSX.Element {
     });
     return () => off();
   }, [refreshGit]);
+
+  // Update notifications: a newer release becomes a sticky toast with a
+  // Download button; a manual "you're up to date" check is a transient info.
+  useEffect(() => {
+    const push = useToasts.getState().push;
+    const offAvail = runner().update.onAvailable((info) => {
+      push('info', `New version ${info.version} is available.`, {
+        sticky: true,
+        action: { label: 'Download', run: () => void runner().update.open(info.url) },
+      });
+    });
+    const offNone = runner().update.onUpToDate(({ version }) => {
+      push('success', `You're on the latest version (${version}).`);
+    });
+    return () => {
+      offAvail();
+      offNone();
+    };
+  }, []);
 
   useGlobalHotkeys();
 

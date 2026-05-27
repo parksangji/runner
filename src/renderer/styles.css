@@ -591,6 +591,54 @@ button:focus-visible {
   text-align: center;
 }
 
+.pixel-runner {
+  display: block;
+  margin: 0 auto 18px;
+  border-radius: 22px;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Subtle vertical bob — the runner "bounces" with each stride. */
+.pixel-runner-body {
+  animation: runner-bob 0.62s steps(2, end) infinite;
+}
+
+@keyframes runner-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.7px);
+  }
+}
+
+/* Motion dashes stream backward and fade, suggesting speed. */
+.pixel-runner-dashes {
+  animation: runner-dash 0.62s linear infinite;
+}
+
+@keyframes runner-dash {
+  0% {
+    opacity: 0.15;
+    transform: translateX(2px);
+  }
+  60% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0.1;
+    transform: translateX(-2.5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixel-runner-body,
+  .pixel-runner-dashes {
+    animation: none;
+  }
+}
+
 .welcome-card h1 {
   margin: 0;
   font-size: 32px;
@@ -652,9 +700,62 @@ button:focus-visible {
   text-align: center;
 }
 
+.terminal-pane .xterm-wrap {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
 .terminal-pane .xterm-host {
   height: 100%;
   width: 100%;
+}
+
+.term-search {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.term-search-input {
+  width: 180px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--fg);
+  font-size: 12px;
+  padding: 4px 7px;
+  outline: none;
+}
+
+.term-search-input:focus {
+  border-color: var(--accent);
+}
+
+.term-search-btn {
+  flex: none;
+  background: none;
+  border: 0;
+  color: var(--fg-dim);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 5px;
+}
+
+.term-search-btn:hover {
+  color: var(--fg);
+  background: var(--accent-soft);
 }
 
 .right-header {
@@ -773,6 +874,25 @@ button:focus-visible {
   flex: 1;
   word-break: break-word;
   white-space: pre-wrap;
+}
+
+.toast-action {
+  flex: none;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.toast-action:hover {
+  background: var(--accent);
+  color: var(--bg);
 }
 
 .toast-close {

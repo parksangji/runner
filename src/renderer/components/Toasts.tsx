@@ -13,6 +13,18 @@ export function Toasts(): JSX.Element | null {
       {toasts.map((t) => (
         <div key={t.id} className={`toast ${t.kind}`} role={t.kind === 'error' ? 'alert' : 'status'}>
           <span className="toast-msg">{t.message}</span>
+          {t.action ? (
+            <button
+              type="button"
+              className="toast-action"
+              onClick={() => {
+                t.action?.run();
+                dismiss(t.id);
+              }}
+            >
+              {t.action.label}
+            </button>
+          ) : null}
           <button
             type="button"
             className="toast-close"

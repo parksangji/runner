@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Terminal, type ITheme } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { SearchAddon } from '@xterm/addon-search';
 import { runner } from '../api';
 import { useTheme } from '../stores/theme';
 
@@ -27,9 +28,20 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
+  const searchRef = useRef<SearchAddon | null>(null);
   const disposedRef = useRef<boolean>(false);
   const initialThemeRender = useRef<boolean>(true);
   const resolvedTheme = useTheme((s) => s.resolved);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  // Stable handle so the (one-time) xterm key handler can open the React-driven
+  // search bar without being recreated on every render.
+  const openSearchRef = useRef<() => void>(() => {});
+  openSearchRef.current = () => {
+    setSearchOpen(true);
+    requestAnimationFrame(() => searchInputRef.current?.select());
+  };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -48,6 +60,9 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
+    const search = new SearchAddon();
+    term.loadAddon(search);
+    searchRef.current = search;
     term.open(host);
     // Canonical xterm pattern: fit immediately after open. The error
     // suppression in main.tsx covers any post-dispose stragglers from
@@ -75,6 +90,11 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true;
       const cmd = isMac ? e.metaKey : e.ctrlKey;
+      if (cmd && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+        openSearchRef.current();
+        e.preventDefault();
+        return false;
+      }
       if (e.key === 'Backspace' && cmd && !e.shiftKey && !e.altKey) {
         runner().daemon.write(sessionId, '\x15');
         e.preventDefault();
@@ -179,6 +199,7 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       }
       if (termRef.current === term) termRef.current = null;
       if (fitRef.current === fit) fitRef.current = null;
+      if (searchRef.current === search) searchRef.current = null;
       void runner().daemon.request({ kind: 'detach', id: sessionId });
     };
   }, [sessionId]);
@@ -201,5 +222,62 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     }
   }, [resolvedTheme]);
 
-  return <div ref={hostRef} className="xterm-host" tabIndex={-1} />;
+  const closeSearch = (): void => {
+    setSearchOpen(false);
+    searchRef.current?.clearDecorations();
+    requestAnimationFrame(() => {
+      try {
+        termRef.current?.focus();
+      } catch {
+        /* ignore */
+      }
+    });
+  };
+
+  const find = (forward: boolean, incremental = false): void => {
+    const q = searchInputRef.current?.value ?? '';
+    if (!q) return;
+    const opts = { caseSensitive: false, incremental };
+    if (forward) searchRef.current?.findNext(q, opts);
+    else searchRef.current?.findPrevious(q, opts);
+  };
+
+  return (
+    <div className="xterm-wrap">
+      <div ref={hostRef} className="xterm-host" tabIndex={-1} />
+      {searchOpen ? (
+        <div className="term-search" role="search">
+          <input
+            ref={searchInputRef}
+            className="term-search-input"
+            value={searchQuery}
+            placeholder="Find in terminal"
+            aria-label="Find in terminal"
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              find(true, true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                find(!e.shiftKey);
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeSearch();
+              }
+            }}
+          />
+          <button type="button" className="term-search-btn" aria-label="Previous match" onClick={() => find(false)}>
+            ↑
+          </button>
+          <button type="button" className="term-search-btn" aria-label="Next match" onClick={() => find(true)}>
+            ↓
+          </button>
+          <button type="button" className="term-search-btn" aria-label="Close search" onClick={closeSearch}>
+            ✕
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }

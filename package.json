@@ -16,6 +16,8 @@
     "package": "electron-vite build && electron-builder",
     "package:mac": "electron-vite build && electron-builder --mac",
     "package:dir": "electron-vite build && electron-builder --dir",
+    "gen:icon": "node scripts/gen-icon.mjs",
+    "release": "npm version patch -m \"release: v%s\" && git push --follow-tags",
     "rebuild": "electron-rebuild -f -w node-pty"
   },
   "build": {
@@ -36,6 +38,13 @@
       "buildResources": "build",
       "output": "release"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "parksangji",
+        "repo": "runner"
+      }
+    ],
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [

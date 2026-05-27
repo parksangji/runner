@@ -1,12 +1,16 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { ConnectionStatus, DaemonEvent, DaemonRequest } from '@shared/protocol';
+import type { ConnectionStatus, DaemonEvent, DaemonRequest, UpdateInfo } from '@shared/protocol';
 
 type EventListener = (evt: DaemonEvent) => void;
 type FsListener = (root: string) => void;
 type StatusListener = (status: ConnectionStatus) => void;
+type UpdateListener = (info: UpdateInfo) => void;
+type UpToDateListener = (info: { version: string }) => void;
 const listeners = new Set<EventListener>();
 const fsListeners = new Set<FsListener>();
 const statusListeners = new Set<StatusListener>();
+const updateListeners = new Set<UpdateListener>();
+const upToDateListeners = new Set<UpToDateListener>();
 
 ipcRenderer.on('daemon:event', (_e, evt: DaemonEvent) => {
   for (const l of listeners) l(evt);
@@ -18,6 +22,14 @@ ipcRenderer.on('daemon:status', (_e, status: ConnectionStatus) => {
 
 ipcRenderer.on('fs:changed', (_e, root: string) => {
   for (const l of fsListeners) l(root);
+});
+
+ipcRenderer.on('update:available', (_e, info: UpdateInfo) => {
+  for (const l of updateListeners) l(info);
+});
+
+ipcRenderer.on('update:none', (_e, info: { version: string }) => {
+  for (const l of upToDateListeners) l(info);
 });
 
 const api = {
@@ -76,6 +88,19 @@ const api = {
       ipcRenderer.invoke('persist:write', path, content),
     paths: (): Promise<{ layout: string; pinned: string }> =>
       ipcRenderer.invoke('persist:paths'),
+  },
+  update: {
+    check: (): Promise<void> => ipcRenderer.invoke('update:check'),
+    open: (url: string): Promise<void> => ipcRenderer.invoke('update:open', url),
+    version: (): Promise<string> => ipcRenderer.invoke('update:version'),
+    onAvailable: (cb: UpdateListener): (() => void) => {
+      updateListeners.add(cb);
+      return () => updateListeners.delete(cb);
+    },
+    onUpToDate: (cb: UpToDateListener): (() => void) => {
+      upToDateListeners.add(cb);
+      return () => upToDateListeners.delete(cb);
+    },
   },
   platform: process.platform,
   env: {

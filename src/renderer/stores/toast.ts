@@ -2,15 +2,28 @@ import { create } from 'zustand';
 
 export type ToastKind = 'error' | 'success' | 'info';
 
+export interface ToastAction {
+  label: string;
+  run: () => void;
+}
+
 export interface Toast {
   id: number;
   kind: ToastKind;
   message: string;
+  action?: ToastAction;
+  /** Sticky toasts never auto-expire (e.g. an update prompt). */
+  sticky?: boolean;
+}
+
+export interface ToastOptions {
+  action?: ToastAction;
+  sticky?: boolean;
 }
 
 interface ToastState {
   toasts: Toast[];
-  push: (kind: ToastKind, message: string) => void;
+  push: (kind: ToastKind, message: string, opts?: ToastOptions) => void;
   dismiss: (id: number) => void;
 }
 
@@ -19,11 +32,13 @@ const AUTO_DISMISS_MS = 6000;
 
 export const useToasts = create<ToastState>((set, get) => ({
   toasts: [],
-  push(kind, message) {
+  push(kind, message, opts) {
     const id = nextId++;
-    set((s) => ({ toasts: [...s.toasts, { id, kind, message }] }));
-    // Errors linger until dismissed; transient kinds auto-expire.
-    if (kind !== 'error') {
+    set((s) => ({
+      toasts: [...s.toasts, { id, kind, message, action: opts?.action, sticky: opts?.sticky }],
+    }));
+    // Errors and sticky toasts linger until dismissed; transient kinds expire.
+    if (kind !== 'error' && !opts?.sticky) {
       setTimeout(() => get().dismiss(id), AUTO_DISMISS_MS);
     }
   },
