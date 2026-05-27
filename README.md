@@ -16,6 +16,8 @@ alive even after you close and reopen the window.
 - **Per-directory git** — git repositories backing open terminals are grouped by directory in the Changes panel
 - **Changes / diff** — per-file diff view, line-level staging, and Pull / Push / Commit / Branch / Discard / History
 - **Conflict resolution** — merge/rebase progress indicator with Continue / Abort
+- **Terminal search** — incremental find-in-terminal (⌘F) over the scrollback
+- **Auto-update** — checks GitHub Releases on launch and offers the new build (notify-style, no signing required)
 - **Themes** — light / dark / system
 
 ### Light and dark themes
@@ -37,10 +39,12 @@ hunks or lines, or stage the whole file at once.
 ```
 src/
 ├── daemon/    # Background process that owns the PTYs (unix-socket RPC)
-├── main/      # Electron main — IPC hub + daemon supervisor
+├── main/      # Electron main — IPC hub, daemon supervisor, update check
 ├── preload/   # contextBridge security boundary
 ├── renderer/  # React UI (zustand, dockview, xterm)
 └── shared/    # Protocol types / paths
+scripts/       # Icon generator (pixel-art runner sprite → build/icon.icns)
+build/         # electron-builder resources (generated app icon)
 ```
 
 ## Develop / run
