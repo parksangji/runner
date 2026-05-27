@@ -6,7 +6,7 @@
   "author": "sangji.park",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "RUNNER_DATA_DIR=$HOME/.runner-dev env -u ELECTRON_RUN_AS_NODE electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",

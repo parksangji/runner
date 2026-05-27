@@ -6,8 +6,10 @@ import { CommitDialog } from './components/CommitDialog';
 import { BranchDialog } from './components/BranchDialog';
 import { LogDialog } from './components/LogDialog';
 import { CommandPalette } from './components/CommandPalette';
+import { SettingsDialog } from './components/SettingsDialog';
 import { Toasts } from './components/Toasts';
 import { useTheme } from './stores/theme';
+import { useSettings } from './stores/settings';
 import { useSessions, bindDaemonEvents } from './stores/sessions';
 import { bindConnectionStatus } from './stores/connection';
 import { useGit } from './stores/git';
@@ -33,11 +35,13 @@ export function App(): JSX.Element {
   const leftWidth = useLayoutPrefs((s) => s.leftWidth);
   const setLeftWidth = useLayoutPrefs((s) => s.setLeftWidth);
   const initTheme = useTheme((s) => s.init);
+  const initSettings = useSettings((s) => s.init);
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     initTheme();
-  }, [initTheme]);
+    initSettings();
+  }, [initTheme, initSettings]);
 
   // Bootstrap: load persisted prefs/pins first, then attach to daemon sessions.
   useEffect(() => {
@@ -172,6 +176,7 @@ export function App(): JSX.Element {
       <BranchDialog />
       <LogDialog />
       <CommandPalette />
+      <SettingsDialog />
       <Toasts />
     </div>
   );

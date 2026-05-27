@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
 import { runner } from '../api';
 import { useTheme } from '../stores/theme';
+import { useSettings } from '../stores/settings';
 
 interface Props {
   sessionId: string;
@@ -20,7 +21,7 @@ function readThemeFromCss(): ITheme {
     foreground: get('--fg', '#d6dbe5'),
     cursor: get('--accent', '#6aa7ff'),
     cursorAccent: get('--bg', '#0f1117'),
-    selectionBackground: get('--accent-soft', 'rgba(106,167,255,0.25)'),
+    selectionBackground: get('--term-selection', 'rgba(106,167,255,0.35)'),
   };
 }
 
@@ -32,6 +33,10 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
   const disposedRef = useRef<boolean>(false);
   const initialThemeRender = useRef<boolean>(true);
   const resolvedTheme = useTheme((s) => s.resolved);
+  const fontSize = useSettings((s) => s.fontSize);
+  const fontFamily = useSettings((s) => s.fontFamily);
+  const cursorBlink = useSettings((s) => s.cursorBlink);
+  const scrollback = useSettings((s) => s.scrollback);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -49,13 +54,17 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     disposedRef.current = false;
     initialThemeRender.current = true;
 
+    // Read current settings synchronously at mount; live changes are applied
+    // by the effect below (we deliberately don't depend on settings here, so
+    // tweaking them never tears down and respawns the terminal).
+    const cfg = useSettings.getState();
     const term = new Terminal({
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-      fontSize: 13,
-      cursorBlink: true,
+      fontFamily: cfg.fontFamily,
+      fontSize: cfg.fontSize,
+      cursorBlink: cfg.cursorBlink,
       allowProposedApi: true,
       theme: readThemeFromCss(),
-      scrollback: 5000,
+      scrollback: cfg.scrollback,
       macOptionIsMeta: true,
     });
     const fit = new FitAddon();
@@ -105,6 +114,31 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
         e.preventDefault();
         return false;
       }
+      // ⌘+arrows (without alt — ⌘⌥+arrows are pane-focus chords handled globally):
+      // ↓ jump to the latest output, ↑ to the top, ←/→ to line start/end (readline).
+      if (cmd && !e.altKey && !e.shiftKey) {
+        const k = e.key.toLowerCase();
+        if (k === 'arrowdown') {
+          term.scrollToBottom();
+          e.preventDefault();
+          return false;
+        }
+        if (k === 'arrowup') {
+          term.scrollToTop();
+          e.preventDefault();
+          return false;
+        }
+        if (k === 'arrowleft') {
+          runner().daemon.write(sessionId, '\x01');
+          e.preventDefault();
+          return false;
+        }
+        if (k === 'arrowright') {
+          runner().daemon.write(sessionId, '\x05');
+          e.preventDefault();
+          return false;
+        }
+      }
       if (isAppShortcut(e)) return false;
       return true;
     });
@@ -119,8 +153,14 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
         const rect = host.getBoundingClientRect();
         if (rect.width < 20 || rect.height < 20) return;
         try {
+          // Maximizing/restoring a group reflows every other terminal; without
+          // this, the row-count change can strand the viewport mid-scrollback.
+          // Preserve bottom-stickiness across the refit so the prompt stays put.
+          const buf = term.buffer.active;
+          const wasAtBottom = buf.viewportY >= buf.baseY;
           fit.fit();
           runner().daemon.resize(sessionId, term.cols, term.rows);
+          if (wasAtBottom) term.scrollToBottom();
         } catch (err) {
           console.warn('resize fit failed', err);
         }
@@ -221,6 +261,24 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       console.warn('retheme failed', err);
     }
   }, [resolvedTheme]);
+
+  // Apply terminal appearance settings live. Font changes alter the cell
+  // geometry, so re-fit and tell the daemon the new cols/rows afterwards.
+  useEffect(() => {
+    const term = termRef.current;
+    const fit = fitRef.current;
+    if (!term || disposedRef.current) return;
+    try {
+      term.options.fontSize = fontSize;
+      term.options.fontFamily = fontFamily;
+      term.options.cursorBlink = cursorBlink;
+      term.options.scrollback = scrollback;
+      fit?.fit();
+      runner().daemon.resize(sessionId, term.cols, term.rows);
+    } catch (err) {
+      console.warn('apply settings failed', err);
+    }
+  }, [fontSize, fontFamily, cursorBlink, scrollback, sessionId]);
 
   const closeSearch = (): void => {
     setSearchOpen(false);

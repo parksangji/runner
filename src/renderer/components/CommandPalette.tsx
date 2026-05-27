@@ -6,6 +6,7 @@ import { useLayoutPrefs } from '../stores/layout';
 import { useTheme, type ThemeMode } from '../stores/theme';
 import { useCommitDialog } from './CommitDialog';
 import { useBranchDialog } from './BranchDialog';
+import { useSettingsDialog } from './SettingsDialog';
 import { useSessions } from '../stores/sessions';
 import { useGit } from '../stores/git';
 import { toastError } from '../stores/toast';
@@ -132,6 +133,13 @@ function buildCommands(): Command[] {
       group: 'Appearance',
       run: () => useTheme.getState().setMode(m),
     })),
+    {
+      id: 'app.settings',
+      title: 'Settings…',
+      group: 'App',
+      hint: `${mod === 'meta' ? '⌘' : 'Ctrl+'},`,
+      run: () => useSettingsDialog.getState().show(),
+    },
     {
       id: 'app.checkUpdate',
       title: 'Check for Updates…',
