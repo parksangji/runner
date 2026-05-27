@@ -393,6 +393,54 @@ button:focus-visible {
   font-size: 12px;
 }
 
+.repo-header .repo-collapse {
+  flex: none;
+  width: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-dim);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.repo-header .repo-collapse:hover {
+  color: var(--fg);
+}
+
+/* Tree (module) view */
+.file-tree {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.tree-folder {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 12px;
+  color: var(--fg-dim);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tree-folder:hover {
+  background: var(--bg-elev-2);
+  color: var(--fg);
+}
+
+.tree-twisty {
+  width: 10px;
+  font-size: 9px;
+  flex: none;
+}
+
+.tree-folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Diff overlay — floats over the terminal area when a changed file is picked */
 .diff-overlay {
   position: absolute;
@@ -574,7 +622,15 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  row-gap: 6px;
   padding: 10px 12px 6px;
+}
+
+.changes-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .right-header h3 {

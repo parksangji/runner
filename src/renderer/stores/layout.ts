@@ -6,15 +6,21 @@ export const LEFT_WIDTH_MIN = 220;
 export const LEFT_WIDTH_MAX = 640;
 const LEFT_WIDTH_DEFAULT = 340;
 
+export type ChangesView = 'list' | 'tree';
+
 interface LayoutPrefsState {
   leftOpen: boolean;
   rightOpen: boolean;
   leftWidth: number;
   zoomed: boolean;
+  changesView: ChangesView;
+  collapsedRepos: Record<string, boolean>;
   toggleLeft: () => void;
   toggleRight: () => void;
   setLeftWidth: (w: number) => void;
   setZoom: (v: boolean) => void;
+  setChangesView: (v: ChangesView) => void;
+  toggleRepoCollapsed: (root: string) => void;
   loadPrefs: () => Promise<void>;
 }
 
@@ -22,6 +28,8 @@ interface PersistedPrefs {
   leftOpen: boolean;
   rightOpen: boolean;
   leftWidth?: number;
+  changesView?: ChangesView;
+  collapsedRepos?: Record<string, boolean>;
   dock?: unknown;
 }
 
@@ -36,6 +44,8 @@ async function writePrefs(): Promise<void> {
       leftOpen: state.leftOpen,
       rightOpen: state.rightOpen,
       leftWidth: state.leftWidth,
+      changesView: state.changesView,
+      collapsedRepos: state.collapsedRepos,
       dock,
     };
     memoryPrefs[PREFS_KEY] = payload;
@@ -60,6 +70,8 @@ export const useLayoutPrefs = create<LayoutPrefsState>((set, get) => ({
   rightOpen: true,
   leftWidth: LEFT_WIDTH_DEFAULT,
   zoomed: false,
+  changesView: 'list',
+  collapsedRepos: {},
 
   toggleLeft() {
     set({ leftOpen: !get().leftOpen });
@@ -81,6 +93,17 @@ export const useLayoutPrefs = create<LayoutPrefsState>((set, get) => ({
     set({ zoomed: v });
   },
 
+  setChangesView(v) {
+    set({ changesView: v });
+    schedulePersist();
+  },
+
+  toggleRepoCollapsed(root) {
+    const cur = get().collapsedRepos;
+    set({ collapsedRepos: { ...cur, [root]: !cur[root] } });
+    schedulePersist();
+  },
+
   async loadPrefs() {
     try {
       const { layout } = await persistedPaths();
@@ -94,6 +117,8 @@ export const useLayoutPrefs = create<LayoutPrefsState>((set, get) => ({
           LEFT_WIDTH_MIN,
           Math.min(LEFT_WIDTH_MAX, parsed.leftWidth ?? LEFT_WIDTH_DEFAULT)
         ),
+        changesView: parsed.changesView === 'tree' ? 'tree' : 'list',
+        collapsedRepos: parsed.collapsedRepos ?? {},
       });
       if (parsed.dock !== undefined) {
         useLayoutDock.setState({ lastSerialized: parsed.dock, restored: false });
