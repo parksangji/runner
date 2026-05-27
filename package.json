@@ -1,6 +1,6 @@
 {
   "name": "runner",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Claude Code workbench: multi-terminal + git in one window",
   "author": "sangji.park",
