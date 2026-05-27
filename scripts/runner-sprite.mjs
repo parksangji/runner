@@ -14,26 +14,29 @@ function capsule(ax, ay, bx, by, r) {
   return { ax, ay, bx, by, r };
 }
 
-// Runner facing right, leaning into a forward stride.
-const HEAD = { cx: 19.5, cy: 6.5, r: 3.4 };
+// Runner facing right, mid-sprint and leaning into the stride. The pose is
+// deliberately asymmetric — front knee driven up-forward, back leg extended in
+// push-off, arms counter-pumping — so the silhouette reads as "running" rather
+// than a symmetric star jump, even at 16px.
+const HEAD = { cx: 20.5, cy: 6.8, r: 3.3 };
 
 const LIMBS = [
-  capsule(18, 10, 13.5, 19, 2.6), // torso (shoulder -> hip)
-  capsule(18, 11, 23, 12.5, 1.9), // front upper arm
-  capsule(23, 12.5, 24.5, 9, 1.7), // front forearm (raised)
-  capsule(17, 12, 12, 15, 1.9), // back upper arm
-  capsule(12, 15, 8.5, 13, 1.7), // back forearm
-  capsule(14, 18.5, 19, 24, 2.2), // front thigh
-  capsule(19, 24, 22.5, 27.5, 2.0), // front shin (planted)
-  capsule(13.5, 19, 9, 23, 2.2), // back thigh
-  capsule(9, 23, 6, 26, 2.0), // back shin (pushing off)
+  capsule(19, 10, 15, 18.5, 2.9), // torso (shoulder -> hip), forward lean
+  capsule(18.5, 11, 24, 13.5, 1.9), // front upper arm (driving forward)
+  capsule(24, 13.5, 26.5, 9.5, 1.7), // front forearm (hand punched up-forward)
+  capsule(18, 12, 12.5, 13.5, 1.9), // back upper arm
+  capsule(12.5, 13.5, 10, 18, 1.7), // back forearm (swinging down-back)
+  capsule(15, 18.5, 21, 21, 2.3), // front thigh (knee driven up)
+  capsule(21, 21, 19.5, 26.5, 1.9), // front shin (foot reaching down-forward)
+  capsule(15, 18.5, 10.5, 22.5, 2.3), // back thigh
+  capsule(10.5, 22.5, 7, 26, 1.9), // back shin (extended, pushing off)
 ];
 
 // Speed dashes trailing behind the runner.
 const DASHES = [
-  capsule(2, 11, 7, 11, 0.9),
-  capsule(0.5, 16, 6, 16, 0.9),
-  capsule(2.5, 21, 8, 21, 0.9),
+  capsule(1.5, 10.5, 6, 10.5, 0.9),
+  capsule(0.5, 15, 5.5, 15, 0.9),
+  capsule(2, 19.5, 7, 19.5, 0.9),
 ];
 
 function distToSeg(px, py, ax, ay, bx, by) {

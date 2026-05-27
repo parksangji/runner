@@ -17,10 +17,14 @@ const buildDir = join(here, '..', 'build');
 const iconset = join(buildDir, 'icon.iconset');
 
 // ---- palette -------------------------------------------------------------
-const BG_TOP = [0x6d, 0xb0, 0xff]; // accent blue (top)
-const BG_BOT = [0x35, 0x6f, 0xe0]; // accent blue (bottom)
-const BODY = [0xf6, 0xf9, 0xff]; // runner figure
-const DASH = [0xff, 0xff, 0xff, 0x80]; // motion trails (semi-transparent)
+// Dark "terminal" background tying the icon to the app's dark UI (#0f1117 base,
+// #6aa7ff accent), with a soft accent glow behind the runner.
+const BG_TL = [0x23, 0x2a, 0x3d]; // elevated navy (top-left)
+const BG_BR = [0x0c, 0x0e, 0x14]; // near-black base (bottom-right)
+const GLOW = [0x6a, 0xa7, 0xff]; // accent glow color
+const BODY_TOP = [0xbf, 0xda, 0xff]; // runner figure, bright top
+const BODY_BOT = [0x4f, 0x8b, 0xef]; // runner figure, accent bottom
+const DASH = [0x9c, 0xc5, 0xff, 0x9c]; // motion trails (accent, semi-transparent)
 
 const lerp = (a, b, t) => Math.round(a + (b - a) * t);
 
@@ -94,11 +98,19 @@ function renderIcon(size) {
         rgba[i + 3] = 0;
         continue;
       }
-      // background gradient
-      const t = y / size;
-      let r = lerp(BG_TOP[0], BG_BOT[0], t);
-      let g = lerp(BG_TOP[1], BG_BOT[1], t);
-      let b = lerp(BG_TOP[2], BG_BOT[2], t);
+      // diagonal background gradient (top-left -> bottom-right)
+      const t = (x / size + y / size) / 2;
+      let r = lerp(BG_TL[0], BG_BR[0], t);
+      let g = lerp(BG_TL[1], BG_BR[1], t);
+      let b = lerp(BG_TL[2], BG_BR[2], t);
+
+      // soft accent glow centred slightly up-left of middle, fading out
+      const gx = (x - size * 0.46) / (size * 0.62);
+      const gy = (y - size * 0.44) / (size * 0.62);
+      const glow = Math.max(0, 1 - (gx * gx + gy * gy)) * 0.32;
+      r = lerp(r, GLOW[0], glow);
+      g = lerp(g, GLOW[1], glow);
+      b = lerp(b, GLOW[2], glow);
 
       // sprite overlay
       const sx = Math.floor((x - pad) / cell);
@@ -106,7 +118,11 @@ function renderIcon(size) {
       if (sx >= 0 && sx < GRID && sy >= 0 && sy < GRID) {
         const kind = sprite[sy][sx];
         if (kind === 'body') {
-          [r, g, b] = BODY;
+          // vertical gradient on the figure: bright at the head, accent at the feet
+          const bt = sy / GRID;
+          r = lerp(BODY_TOP[0], BODY_BOT[0], bt);
+          g = lerp(BODY_TOP[1], BODY_BOT[1], bt);
+          b = lerp(BODY_TOP[2], BODY_BOT[2], bt);
         } else if (kind === 'dash') {
           const a = DASH[3] / 255;
           r = lerp(r, DASH[0], a);
