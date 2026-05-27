@@ -12,6 +12,13 @@ export interface SessionSpec {
   createdAt: number;
 }
 
+/** A newer GitHub release than the running app (notify-style updater). */
+export interface UpdateInfo {
+  version: string;
+  url: string;
+  notes: string;
+}
+
 export interface SessionSummary {
   id: SessionId;
   cwd: string;

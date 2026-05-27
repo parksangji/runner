@@ -7,6 +7,7 @@ import { registerDaemonIpc } from './ipc/daemon';
 import { registerFsWatchIpc, disposeWatchers } from './ipc/fs-watch';
 import { registerStageHunksIpc } from './ipc/stage-hunks';
 import { registerPersistenceIpc } from './ipc/persistence';
+import { registerUpdaterIpc, checkForUpdate } from './updater';
 import { ensureDaemon, shutdownClient } from './daemon-supervisor';
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL;
@@ -55,7 +56,14 @@ app.whenReady().then(async () => {
   registerFsWatchIpc(ipcMain);
   registerStageHunksIpc(ipcMain);
   registerPersistenceIpc(ipcMain);
-  await createWindow();
+  const win = await createWindow();
+
+  // Notify-style update check: query GitHub a few seconds after launch (once
+  // the window is live), and expose a manual re-check over IPC.
+  registerUpdaterIpc(ipcMain, () => BrowserWindow.getAllWindows()[0] ?? null);
+  if (!isDev) {
+    setTimeout(() => void checkForUpdate(() => win, { silent: true }), 4000);
+  }
 
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {

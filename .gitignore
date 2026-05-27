@@ -8,3 +8,4 @@ release
 .env.local
 .vite
 docs
+build/icon.iconset

@@ -52,8 +52,37 @@ npm run build      # production build
 npm run typecheck  # type check
 npm run lint       # ESLint
 npm run test       # unit tests (vitest)
+npm run gen:icon   # regenerate the app icon from the pixel sprite
 npm run package    # package the app
 ```
+
+## Install as a Mac app & updates
+
+Build a local `.app` / `.dmg`:
+
+```bash
+npm run package:mac   # writes release/*.dmg + release/mac-*/Runner.app
+```
+
+Drag `Runner.app` into `/Applications`. The app icon is a pixel-art runner
+generated from `scripts/runner-sprite.mjs` (run `npm run gen:icon` after editing
+the sprite — it rewrites `build/icon.icns` and the welcome-screen sprite).
+
+### Shipping an update
+
+Releases are automated. Cut one with:
+
+```bash
+npm run release       # npm version patch → tags vX.Y.Z → pushes the tag
+```
+
+Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds an
+unsigned macOS DMG/zip and attaches it to a GitHub Release. On launch the app
+checks the latest release and, if it's newer, shows a **Download** toast (also
+available any time via the command palette → *Check for Updates*). Updates are
+notify-only — no Apple Developer certificate required; users drag-install the
+new DMG. Develop freely with Claude Code; `npm run release` is the whole ship
+step.
 
 ## Keyboard shortcuts
 
@@ -63,4 +92,5 @@ npm run package    # package the app
 | ⌘D / ⌘⇧D | Split right / down |
 | ⌘W | Close current terminal |
 | ⌘B | Toggle Changes panel |
+| ⌘F | Find in terminal |
 | ⌘K | Command palette |

@@ -1,4 +1,10 @@
-import type { ConnectionStatus, DaemonEvent, DaemonRequest, SessionSummary } from '@shared/protocol';
+import type {
+  ConnectionStatus,
+  DaemonEvent,
+  DaemonRequest,
+  SessionSummary,
+  UpdateInfo,
+} from '@shared/protocol';
 import type { GitCommit, GitSnapshot } from '@main/ipc/git';
 import type { StageHunksRequest } from '@main/ipc/stage-hunks';
 
@@ -41,6 +47,13 @@ interface RunnerApi {
     read: (path: string) => Promise<string | null>;
     write: (path: string, content: string) => Promise<boolean>;
     paths: () => Promise<{ layout: string; pinned: string }>;
+  };
+  update: {
+    check: () => Promise<void>;
+    open: (url: string) => Promise<void>;
+    version: () => Promise<string>;
+    onAvailable: (cb: (info: UpdateInfo) => void) => () => void;
+    onUpToDate: (cb: (info: { version: string }) => void) => () => void;
   };
   platform: NodeJS.Platform;
   env: { home: string; shell: string };

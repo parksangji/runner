@@ -6,6 +6,7 @@ import { useLayoutDock } from '../stores/layout';
 import { useTheme } from '../stores/theme';
 import { TerminalView } from './TerminalView';
 import { DiffOverlay } from './DiffOverlay';
+import { PixelRunner } from './PixelRunner';
 
 function focusXtermIn(root: HTMLElement | null): void {
   if (!root) return;
@@ -44,6 +45,7 @@ const SHORTCUTS: { keys: string; label: string }[] = [
   { keys: `${mod}${shift}D`, label: 'Split down' },
   { keys: `${mod}W`, label: 'Close terminal' },
   { keys: `${mod}B`, label: 'Toggle Changes panel' },
+  { keys: `${mod}F`, label: 'Find in terminal' },
   { keys: `${mod}K`, label: 'Command palette' },
 ];
 
@@ -51,6 +53,7 @@ function Welcome(): JSX.Element {
   return (
     <div className="welcome">
       <div className="welcome-card">
+        <PixelRunner />
         <h1>runner</h1>
         <p className="welcome-sub">Claude Code workbench — multi-terminal + git</p>
         <button

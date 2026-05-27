@@ -132,6 +132,12 @@ function buildCommands(): Command[] {
       group: 'Appearance',
       run: () => useTheme.getState().setMode(m),
     })),
+    {
+      id: 'app.checkUpdate',
+      title: 'Check for Updates…',
+      group: 'App',
+      run: () => runner().update.check(),
+    },
   ];
 }
 
