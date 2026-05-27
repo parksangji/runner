@@ -5,11 +5,22 @@
   --fg: #d6dbe5;
   --fg-dim: #8a93a6;
   --accent: #6aa7ff;
-  --accent-soft: rgba(106, 167, 255, 0.16);
   --border: #232838;
   --added: #2ea043;
   --removed: #f85149;
   --warning: #d29922;
+  /* Translucent tint family — derived from the semantic colors above so both
+     themes share one cohesive "tinted glass" feel and adapt automatically.
+     *-soft = fill, *-line = border, *-faint = barely-there backdrop. */
+  --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 32%, transparent);
+  --added-soft: color-mix(in srgb, var(--added) 14%, transparent);
+  --added-line: color-mix(in srgb, var(--added) 34%, transparent);
+  --removed-soft: color-mix(in srgb, var(--removed) 14%, transparent);
+  --removed-line: color-mix(in srgb, var(--removed) 34%, transparent);
+  --warning-soft: color-mix(in srgb, var(--warning) 14%, transparent);
+  --warning-line: color-mix(in srgb, var(--warning) 34%, transparent);
+  --warning-faint: color-mix(in srgb, var(--warning) 6%, transparent);
   --syn-keyword: #ff7b72;
   --syn-string: #a5d6ff;
   --syn-number: #79c0ff;
@@ -29,7 +40,6 @@
   --fg: #1c2230;
   --fg-dim: #5a6374;
   --accent: #1f6feb;
-  --accent-soft: rgba(31, 111, 235, 0.12);
   --border: #d8dce6;
   --added: #1a7f37;
   --removed: #cf222e;
@@ -122,15 +132,15 @@ button:focus-visible {
 }
 
 .conn-pill.reconnecting {
-  background: rgba(210, 153, 34, 0.12);
+  background: var(--warning-soft);
   color: var(--warning);
-  border-color: rgba(210, 153, 34, 0.35);
+  border-color: var(--warning-line);
 }
 
 .conn-pill.disconnected {
-  background: rgba(248, 81, 73, 0.12);
+  background: var(--removed-soft);
   color: var(--removed);
-  border-color: rgba(248, 81, 73, 0.35);
+  border-color: var(--removed-line);
 }
 
 .conn-dot {
@@ -162,7 +172,7 @@ button:focus-visible {
 }
 
 .conn-retry:hover {
-  background: rgba(248, 81, 73, 0.15);
+  background: var(--removed-soft);
 }
 
 .theme-switch {
@@ -278,21 +288,50 @@ button:focus-visible {
   background: var(--accent-soft);
 }
 
+/* Status badges read as small translucent tint chips. */
 .sidebar .changed-file .status {
-  width: 14px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
   color: var(--fg-dim);
+  background: color-mix(in srgb, var(--fg-dim) 14%, transparent);
 }
 
 .sidebar .changed-file .status.M {
   color: var(--warning);
+  background: var(--warning-soft);
 }
 
 .sidebar .changed-file .status.A {
   color: var(--added);
+  background: var(--added-soft);
 }
 
 .sidebar .changed-file .status.D {
   color: var(--removed);
+  background: var(--removed-soft);
+}
+
+.sidebar .changed-file .status.R {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Untracked (?) and conflicted (!) — escaped class tokens. */
+.sidebar .changed-file .status[class~='?'] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.sidebar .changed-file .status[class~='!'] {
+  color: var(--removed);
+  background: var(--removed-soft);
 }
 
 .sidebar .changed-file .file-path {
@@ -574,7 +613,7 @@ button:focus-visible {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(31, 111, 235, 0.25);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 .welcome-cta:hover {
@@ -680,9 +719,9 @@ button:focus-visible {
 }
 
 .banner.err {
-  background: rgba(248, 81, 73, 0.12);
+  background: var(--removed-soft);
   color: var(--removed);
-  border: 1px solid rgba(248, 81, 73, 0.3);
+  border: 1px solid var(--removed-line);
 }
 
 /* Toast notifications (bottom-right stack) */
@@ -719,15 +758,15 @@ button:focus-visible {
 }
 
 .toast.error {
-  background: rgba(248, 81, 73, 0.14);
+  background: var(--removed-soft);
   color: var(--removed);
-  border-color: rgba(248, 81, 73, 0.4);
+  border-color: var(--removed-line);
 }
 
 .toast.success {
-  background: rgba(46, 160, 67, 0.14);
+  background: var(--added-soft);
   color: var(--added);
-  border-color: rgba(46, 160, 67, 0.4);
+  border-color: var(--added-line);
 }
 
 .toast-msg {
@@ -791,7 +830,7 @@ button:focus-visible {
 }
 
 .diff .line.add {
-  background: rgba(46, 160, 67, 0.1);
+  background: var(--added-soft);
 }
 
 .diff .line.add .line-sign {
@@ -799,7 +838,7 @@ button:focus-visible {
 }
 
 .diff .line.del {
-  background: rgba(248, 81, 73, 0.1);
+  background: var(--removed-soft);
 }
 
 .diff .line.del .line-sign {
@@ -1043,9 +1082,9 @@ button.primary:disabled {
 
 /* Conflict banner */
 .banner.warn {
-  background: rgba(210, 153, 34, 0.12);
+  background: var(--warning-soft);
   color: var(--warning);
-  border: 1px solid rgba(210, 153, 34, 0.35);
+  border: 1px solid var(--warning-line);
 }
 
 .conflict-panel {
@@ -1057,9 +1096,9 @@ button.primary:disabled {
   list-style: none;
   margin: 0 12px;
   padding: 0;
-  border: 1px solid rgba(210, 153, 34, 0.35);
+  border: 1px solid var(--warning-line);
   border-radius: 4px;
-  background: rgba(210, 153, 34, 0.05);
+  background: var(--warning-faint);
 }
 
 .conflict-list li {
@@ -1070,7 +1109,7 @@ button.primary:disabled {
 }
 
 .conflict-list li.active {
-  background: rgba(210, 153, 34, 0.18);
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
 }
 
 .conflict-diff {
@@ -1088,9 +1127,9 @@ button.primary:disabled {
 }
 
 .banner.ok {
-  background: rgba(46, 160, 67, 0.12);
+  background: var(--added-soft);
   color: var(--added);
-  border: 1px solid rgba(46, 160, 67, 0.35);
+  border: 1px solid var(--added-line);
 }
 
 .conflict-actions {
