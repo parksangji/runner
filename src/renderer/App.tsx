@@ -4,6 +4,7 @@ import { ChangesPanel } from './components/ChangesPanel';
 import { Center } from './components/Center';
 import { CommitDialog } from './components/CommitDialog';
 import { BranchDialog } from './components/BranchDialog';
+import { LogDialog } from './components/LogDialog';
 import { CommandPalette } from './components/CommandPalette';
 import { useTheme } from './stores/theme';
 import { useSessions, bindDaemonEvents } from './stores/sessions';
@@ -145,6 +146,7 @@ export function App(): JSX.Element {
       </div>
       <CommitDialog />
       <BranchDialog />
+      <LogDialog />
       <CommandPalette />
     </div>
   );

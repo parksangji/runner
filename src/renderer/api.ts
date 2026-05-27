@@ -1,5 +1,5 @@
 import type { DaemonEvent, DaemonRequest, SessionSummary } from '@shared/protocol';
-import type { GitSnapshot } from '@main/ipc/git';
+import type { GitCommit, GitSnapshot } from '@main/ipc/git';
 import type { StageHunksRequest } from '@main/ipc/stage-hunks';
 
 interface RunnerApi {
@@ -15,11 +15,15 @@ interface RunnerApi {
     snapshot: (cwd: string) => Promise<GitSnapshot>;
     diff: (cwd: string, file: string, staged: boolean) => Promise<string>;
     branches: (cwd: string) => Promise<unknown>;
+    log: (cwd: string, limit?: number) => Promise<GitCommit[]>;
     checkout: (cwd: string, branch: string, create: boolean) => Promise<unknown>;
     pull: (cwd: string) => Promise<unknown>;
     push: (cwd: string) => Promise<unknown>;
     stage: (cwd: string, files: string[]) => Promise<unknown>;
     unstage: (cwd: string, files: string[]) => Promise<unknown>;
+    discard: (cwd: string, files: string[]) => Promise<unknown>;
+    abort: (cwd: string) => Promise<unknown>;
+    continue: (cwd: string) => Promise<unknown>;
     commit: (
       cwd: string,
       message: string,

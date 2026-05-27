@@ -1,70 +1,97 @@
 # Runner
 
-> Claude Code 워크벤치 — 멀티 터미널과 git을 한 창에서
+> A Claude Code workbench — multiple terminals and git in a single window.
 
-Runner는 여러 터미널 세션과 git 작업을 하나의 데스크톱 앱에서 다루는 Electron 기반 워크벤치입니다.
-터미널 세션은 창과 분리된 백그라운드 데몬이 소유하므로 창을 닫았다 열어도 셸이 살아있습니다.
+Runner is an Electron-based workbench for managing several terminal sessions
+and git operations in one desktop app. Terminal sessions are owned by a
+background daemon that lives independently of the window, so your shells stay
+alive even after you close and reopen the window.
 
-## 주요 기능
+![Runner — light theme](assets/screenshot-light.png)
 
-- **멀티 터미널** — 분할/탭 배치, 디렉토리(cwd) 자동 추적
-- **영속 세션** — 터미널 PTY를 데몬이 소유, 앱 재시작 후에도 복원
-- **디렉토리별 git** — 열린 터미널의 git 저장소를 변경내역 패널에 디렉토리별로 표시
-- **변경내역 / diff** — 파일별 diff 보기, 라인 단위 스테이징, Pull/Push/Commit/Branch
-- **테마** — 라이트 / 다크 / 시스템
+## Features
 
-## 아키텍처
+- **Multiple terminals** — split/tab layouts with automatic working-directory (cwd) tracking
+- **Persistent sessions** — terminal PTYs are owned by the daemon and restored across app restarts
+- **Per-directory git** — git repositories backing open terminals are grouped by directory in the Changes panel
+- **Changes / diff** — per-file diff view, line-level staging, and Pull / Push / Commit / Branch / Discard / History
+- **Conflict resolution** — merge/rebase progress indicator with Continue / Abort
+- **Themes** — light / dark / system
+
+### Light and dark themes
+
+The theme switch in the top-right toggles light, dark, and system modes. The
+selected mode is persisted; system mode follows the OS setting.
+
+![Runner — dark theme](assets/screenshot-dark.png)
+
+### Inline diffs with line-level staging
+
+Click a changed file to open its diff over the terminal area. Stage individual
+hunks or lines, or stage the whole file at once.
+
+![Runner — diff view](assets/screenshot-diff.png)
+
+## Architecture
 
 ```
 src/
-├── daemon/    # PTY를 소유하는 백그라운드 프로세스 (유닉스 소켓 RPC)
-├── main/      # Electron 메인 — IPC 허브 + 데몬 관리
-├── preload/   # contextBridge 보안 경계
+├── daemon/    # Background process that owns the PTYs (unix-socket RPC)
+├── main/      # Electron main — IPC hub + daemon supervisor
+├── preload/   # contextBridge security boundary
 ├── renderer/  # React UI (zustand, dockview, xterm)
-└── shared/    # 프로토콜 타입 / 경로
+└── shared/    # Protocol types / paths
 ```
 
-## 개발 / 실행
+## Develop / run
 
 ```bash
 npm install
-npm run dev        # 개발 모드 (electron-vite)
-npm run build      # 프로덕션 빌드
-npm run typecheck  # 타입 체크
-npm run package    # 앱 패키징
+npm run dev        # development mode (electron-vite)
+npm run build      # production build
+npm run typecheck  # type check
+npm run lint       # ESLint
+npm run test       # unit tests (vitest)
+npm run package    # package the app
 ```
 
-## 단축키
+## Keyboard shortcuts
 
-| 키 | 동작 |
-|----|------|
-| ⌘T | 새 터미널 |
-| ⌘D / ⌘⇧D | 오른쪽 / 아래로 분할 |
-| ⌘W | 현재 터미널 닫기 |
-| ⌘B | 변경내역 패널 토글 |
-| ⌘K | 커맨드 팔레트 |
+| Key | Action |
+|-----|--------|
+| ⌘T | New terminal |
+| ⌘D / ⌘⇧D | Split right / down |
+| ⌘W | Close current terminal |
+| ⌘B | Toggle Changes panel |
+| ⌘K | Command palette |
 
-## 수정 이력
+## Changelog
 
-### 2026-04-26 — 테마 전환 (라이트 / 다크 / 시스템)
-- 상단바 오른쪽에 ☀ / ☾ / 🖥 테마 전환 컨트롤 추가
-- 선택 모드 localStorage 영속화, 시스템 모드는 OS 설정을 따라감
-- Welcome 화면도 테마 변수로 통일
+### 2026-05-27 — git feature expansion · conflict resolution · CI
+- Added per-file **Discard** (revert working-tree changes; untracked files are deleted) and **Unstage** buttons in the Changes panel
+- Wired the ConflictPanel to merge/rebase IPC — progress indicator plus **Continue** / **Abort** once conflicts are resolved
+- Added **History** (🕑) to each directory group — a recent-commit history dialog
+- Added an ESLint flat config (`npm run lint` now works) and GitHub Actions CI (typecheck/lint/test)
 
-### 2026-03-22 — 터미널 영역 Diff 오버레이 · Welcome · 패널 동기화
-- 변경 파일 클릭 시 **터미널 영역에 diff 페이지**가 토글로 열림(재클릭/닫기 버튼으로 닫힘)
-- 터미널이 없을 때 단축키 안내가 담긴 **Welcome 화면** 표시
-- dockview 패널 동기화를 일원화해 "보이지 않는 세션" 제거, ⌘D/⌘⇧D 분할 복원
-- dockview 탭바가 앱 테마(라이트/다크)를 따르도록 변경
+### 2026-04-26 — theme switch (light / dark / system)
+- Added a ☀ / ☾ / 🖥 theme switch to the top-right of the top bar
+- The selected mode is persisted to localStorage; system mode follows the OS setting
+- The Welcome screen now uses the shared theme variables
 
-### 2026-02-18 — UI 개편: 변경내역 패널 · 디렉토리별 git
-- 좌/우 사이드바를 좌측 단일 **변경내역(Changes) 패널**로 통합
-- 열린 터미널(분할 포함)의 git 저장소를 **디렉토리별 그룹**으로 표시, 그룹마다 Pull/Push/Commit/Branch
-- 커밋/브랜치 다이얼로그가 대상 디렉토리(cwd)를 받도록 변경
-- 변경내역 패널 **너비 드래그 조절** + 상태 영속화
-- 데몬 세션 목록 주기적 재동기화(reconcile)로 cwd 변화 반영
+### 2026-03-22 — diff overlay over the terminal area · Welcome · panel sync
+- Clicking a changed file toggles a **diff page over the terminal area** (re-click or the close button dismisses it)
+- A **Welcome screen** with keyboard-shortcut hints shows when no terminals are open
+- Unified dockview panel sync to eliminate "invisible sessions" and restore ⌘D/⌘⇧D splitting
+- The dockview tab bar now follows the app theme (light/dark)
 
-### 2026-01-15 — 백엔드: cwd 추적 · IPC 직렬화 · 이벤트 포워더
-- 셸 프로세스의 실제 작업 디렉토리를 폴링해 cwd를 추적 (OSC 7 미지원 셸 대응)
-- git 스냅샷을 structured-clone 가능한 plain 객체로 직렬화 (IPC 클론 오류 해결)
-- 데몬 이벤트 포워더를 client 인스턴스 기준으로 재부착 (재연결 시 이벤트 유실 방지)
+### 2026-02-18 — UI overhaul: Changes panel · per-directory git
+- Merged the left/right sidebars into a single left **Changes panel**
+- Git repositories backing open terminals (splits included) are shown as **per-directory groups**, each with Pull/Push/Commit/Branch
+- The commit/branch dialogs now take a target directory (cwd)
+- **Drag-to-resize** the Changes panel width, with persisted state
+- Periodic reconcile of the daemon session list to reflect cwd changes
+
+### 2026-01-15 — backend: cwd tracking · IPC serialization · event forwarder
+- Track cwd by polling the shell process's real working directory (handles shells without OSC 7 support)
+- Serialize git snapshots into structured-clone-safe plain objects (fixes the IPC clone error)
+- Re-attach the daemon event forwarder per client instance (prevents event loss on reconnect)

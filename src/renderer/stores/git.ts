@@ -8,7 +8,7 @@ interface GitState {
   refresh: (cwd: string) => Promise<GitSnapshot | null>;
 }
 
-export const useGit = create<GitState>((set, get) => ({
+export const useGit = create<GitState>((set) => ({
   snapshots: {},
   loading: {},
 
