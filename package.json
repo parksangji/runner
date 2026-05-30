@@ -45,6 +45,9 @@
         "repo": "runner"
       }
     ],
+    "releaseInfo": {
+      "releaseNotesFile": "build/release-notes.md"
+    },
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [

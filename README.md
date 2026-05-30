@@ -67,17 +67,38 @@ daemon socket, sessions, and layout) so you can keep using an installed
 `Runner.app` as your daily driver while developing alongside it. Override the
 location with `RUNNER_DATA_DIR=/some/path`.
 
-## Install as a Mac app & updates
+## Install on macOS
 
-Build a local `.app` / `.dmg`:
+Grab the latest `Runner-<version>-arm64.dmg` (Apple Silicon) or
+`Runner-<version>.dmg` (Intel) from the
+[releases page](https://github.com/parksangji/runner/releases), open it, and
+drag `Runner.app` into `/Applications`.
+
+### "Runner is damaged and can't be opened" / moved to Trash
+
+The released builds are **not signed with an Apple Developer ID** yet, so
+macOS Gatekeeper quarantines the download and refuses to launch it (on
+Sequoia it goes straight to the Trash). One command clears the quarantine
+attribute and the app then opens normally:
+
+```bash
+xattr -cr /Applications/Runner.app
+```
+
+You only need to run this once per install (and again after each update).
+We'll switch to a proper Developer ID signature + Apple notarization once an
+Apple Developer account is in place, after which this step goes away.
+
+### Build it yourself
 
 ```bash
 npm run package:mac   # writes release/*.dmg + release/mac-*/Runner.app
 ```
 
-Drag `Runner.app` into `/Applications`. The app icon is a pixel-art runner
-generated from `scripts/runner-sprite.mjs` (run `npm run gen:icon` after editing
-the sprite — it rewrites `build/icon.icns` and the welcome-screen sprite).
+A locally built `.app` doesn't have the quarantine flag, so it launches
+directly. The app icon is a pixel-art runner generated from
+`scripts/runner-sprite.mjs` (run `npm run gen:icon` after editing the sprite —
+it rewrites `build/icon.icns` and the welcome-screen sprite).
 
 ### Shipping an update
 
@@ -91,9 +112,11 @@ Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds an
 unsigned macOS DMG/zip and attaches it to a GitHub Release. On launch the app
 checks the latest release and, if it's newer, shows a **Download** toast (also
 available any time via the command palette → *Check for Updates*). Updates are
-notify-only — no Apple Developer certificate required; users drag-install the
-new DMG. Develop freely with Claude Code; `npm run release` is the whole ship
-step.
+notify-only — users drag-install the new DMG and, because the build is
+unsigned, they need to re-run `xattr -cr /Applications/Runner.app` to clear
+the quarantine attribute (see [Install on macOS](#install-on-macos)). The
+release body the workflow uploads includes that instruction. Develop freely
+with Claude Code; `npm run release` is the whole ship step.
 
 ## Keyboard shortcuts
 
