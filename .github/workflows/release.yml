@@ -36,3 +36,13 @@ jobs:
           # The in-app updater is notify-only, so signing isn't required.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npx electron-builder --mac --publish always
+
+      # electron-builder's GitHub publisher creates the release as a draft with
+      # an empty body — its releaseInfo only flows into latest-mac.yml for the
+      # in-app updater, not the GitHub release page itself. Fill the body from
+      # build/release-notes.md and flip the release out of draft so the tag
+      # actually shows up as Latest and the asset URLs are publicly resolvable.
+      - name: Publish release (set body + un-draft)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${GITHUB_REF_NAME}" --draft=false --notes-file build/release-notes.md
