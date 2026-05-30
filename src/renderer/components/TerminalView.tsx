@@ -144,6 +144,14 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     });
 
     let pendingResize = false;
+    // Tracks the hidden→visible transition that dockview's maximize toggle
+    // drives by collapsing each other group's container to size 0 (it does
+    // not use display:none — see dockview-core viewItem.setVisible). While
+    // collapsed the browser zeroes scrollTop on the 0-height viewport and
+    // xterm's DOM renderer can't paint, so on the way back we need to both
+    // restore bottom-stickiness and force a full row repaint.
+    let wasVisible = true;
+    let stuckToBottom = true;
     const onResize = (): void => {
       if (pendingResize || !isAlive()) return;
       pendingResize = true;
@@ -151,16 +159,43 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
         pendingResize = false;
         if (!isAlive() || !host.isConnected) return;
         const rect = host.getBoundingClientRect();
-        if (rect.width < 20 || rect.height < 20) return;
+        const visible = rect.width >= 20 && rect.height >= 20;
+        if (!visible) {
+          // Snapshot bottom-stickiness on the way out — once the container
+          // collapses, viewportY drifts toward 0 and we can't tell anymore.
+          if (wasVisible) {
+            try {
+              const buf = term.buffer.active;
+              stuckToBottom = buf.viewportY >= buf.baseY;
+            } catch {
+              stuckToBottom = true;
+            }
+            wasVisible = false;
+          }
+          return;
+        }
         try {
           // Maximizing/restoring a group reflows every other terminal; without
           // this, the row-count change can strand the viewport mid-scrollback.
-          // Preserve bottom-stickiness across the refit so the prompt stays put.
-          const buf = term.buffer.active;
-          const wasAtBottom = buf.viewportY >= buf.baseY;
+          // Use the snapshot from the hidden transition; otherwise probe now.
+          if (wasVisible) {
+            const buf = term.buffer.active;
+            stuckToBottom = buf.viewportY >= buf.baseY;
+          }
           fit.fit();
           runner().daemon.resize(sessionId, term.cols, term.rows);
-          if (wasAtBottom) term.scrollToBottom();
+          // Hidden→visible: fit() is a no-op when cols/rows haven't changed,
+          // so it never calls _renderService.clear() to drop the stale rows
+          // the DOM renderer kept while we were 0-sized. Force the repaint.
+          if (!wasVisible) {
+            try {
+              term.refresh(0, Math.max(0, term.rows - 1));
+            } catch {
+              /* ignore — late refresh during teardown */
+            }
+            wasVisible = true;
+          }
+          if (stuckToBottom) term.scrollToBottom();
         } catch (err) {
           console.warn('resize fit failed', err);
         }
