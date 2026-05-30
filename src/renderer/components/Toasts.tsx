@@ -19,7 +19,9 @@ export function Toasts(): JSX.Element | null {
               className="toast-action"
               onClick={() => {
                 t.action?.run();
-                dismiss(t.id);
+                // The update flow morphs its toast through several states, so
+                // the action callback dismisses it itself when appropriate.
+                if (!t.sticky) dismiss(t.id);
               }}
             >
               {t.action.label}
@@ -33,6 +35,20 @@ export function Toasts(): JSX.Element | null {
           >
             ✕
           </button>
+          {typeof t.progress === 'number' ? (
+            <div
+              className="toast-progress"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.max(0, Math.min(100, t.progress))}
+            >
+              <div
+                className="toast-progress-bar"
+                style={{ width: `${Math.max(0, Math.min(100, t.progress))}%` }}
+              />
+            </div>
+          ) : null}
         </div>
       ))}
     </div>

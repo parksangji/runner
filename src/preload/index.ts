@@ -6,11 +6,18 @@ type FsListener = (root: string) => void;
 type StatusListener = (status: ConnectionStatus) => void;
 type UpdateListener = (info: UpdateInfo) => void;
 type UpToDateListener = (info: { version: string }) => void;
+type DownloadProgress = { downloaded: number; total: number; percent: number };
+type DownloadProgressListener = (p: DownloadProgress) => void;
+type DownloadedListener = (info: { version: string }) => void;
+type DownloadErrorListener = (info: { message: string }) => void;
 const listeners = new Set<EventListener>();
 const fsListeners = new Set<FsListener>();
 const statusListeners = new Set<StatusListener>();
 const updateListeners = new Set<UpdateListener>();
 const upToDateListeners = new Set<UpToDateListener>();
+const progressListeners = new Set<DownloadProgressListener>();
+const downloadedListeners = new Set<DownloadedListener>();
+const downloadErrorListeners = new Set<DownloadErrorListener>();
 
 ipcRenderer.on('daemon:event', (_e, evt: DaemonEvent) => {
   for (const l of listeners) l(evt);
@@ -30,6 +37,18 @@ ipcRenderer.on('update:available', (_e, info: UpdateInfo) => {
 
 ipcRenderer.on('update:none', (_e, info: { version: string }) => {
   for (const l of upToDateListeners) l(info);
+});
+
+ipcRenderer.on('update:download-progress', (_e, p: DownloadProgress) => {
+  for (const l of progressListeners) l(p);
+});
+
+ipcRenderer.on('update:downloaded', (_e, info: { version: string }) => {
+  for (const l of downloadedListeners) l(info);
+});
+
+ipcRenderer.on('update:download-error', (_e, info: { message: string }) => {
+  for (const l of downloadErrorListeners) l(info);
 });
 
 const api = {
@@ -93,6 +112,8 @@ const api = {
     check: (): Promise<void> => ipcRenderer.invoke('update:check'),
     open: (url: string): Promise<void> => ipcRenderer.invoke('update:open', url),
     version: (): Promise<string> => ipcRenderer.invoke('update:version'),
+    download: (): Promise<void> => ipcRenderer.invoke('update:download'),
+    install: (): Promise<void> => ipcRenderer.invoke('update:install'),
     onAvailable: (cb: UpdateListener): (() => void) => {
       updateListeners.add(cb);
       return () => updateListeners.delete(cb);
@@ -100,6 +121,18 @@ const api = {
     onUpToDate: (cb: UpToDateListener): (() => void) => {
       upToDateListeners.add(cb);
       return () => upToDateListeners.delete(cb);
+    },
+    onProgress: (cb: DownloadProgressListener): (() => void) => {
+      progressListeners.add(cb);
+      return () => progressListeners.delete(cb);
+    },
+    onDownloaded: (cb: DownloadedListener): (() => void) => {
+      downloadedListeners.add(cb);
+      return () => downloadedListeners.delete(cb);
+    },
+    onError: (cb: DownloadErrorListener): (() => void) => {
+      downloadErrorListeners.add(cb);
+      return () => downloadErrorListeners.delete(cb);
     },
   },
   platform: process.platform,

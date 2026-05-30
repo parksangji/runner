@@ -105,21 +105,83 @@ export function App(): JSX.Element {
     return () => off();
   }, [refreshGit]);
 
-  // Update notifications: a newer release becomes a sticky toast with a
-  // Download button; a manual "you're up to date" check is a transient info.
+  // Update notifications. On macOS we drive the full download → swap flow
+  // through a single sticky toast that morphs through its states; on other
+  // platforms we fall back to the original notify-only path (clicking the
+  // toast opens the release page in the system browser).
   useEffect(() => {
-    const push = useToasts.getState().push;
+    const { push, update, dismiss } = useToasts.getState();
+    const isMac = runner().platform === 'darwin';
+    // The active update toast id, so progress/downloaded/error handlers can
+    // morph the same toast instead of stacking new ones.
+    let toastId: number | null = null;
+    let pendingVersion = '';
+
     const offAvail = runner().update.onAvailable((info) => {
-      push('info', `New version ${info.version} is available.`, {
-        sticky: true,
-        action: { label: 'Download', run: () => void runner().update.open(info.url) },
+      pendingVersion = info.version;
+      if (toastId !== null) dismiss(toastId);
+      if (isMac) {
+        toastId = push('info', `New version ${info.version} is available.`, {
+          sticky: true,
+          action: {
+            label: 'Download & install',
+            run: () => {
+              if (toastId !== null) {
+                update(toastId, {
+                  message: `Downloading ${info.version}… 0%`,
+                  action: undefined,
+                  progress: 0,
+                });
+              }
+              void runner().update.download();
+            },
+          },
+        });
+      } else {
+        toastId = push('info', `New version ${info.version} is available.`, {
+          sticky: true,
+          action: { label: 'Download', run: () => void runner().update.open(info.url) },
+        });
+      }
+    });
+
+    const offProgress = runner().update.onProgress(({ percent }) => {
+      if (toastId === null) return;
+      update(toastId, {
+        message: `Downloading ${pendingVersion}… ${percent}%`,
+        progress: percent,
       });
     });
+
+    const offDownloaded = runner().update.onDownloaded(({ version }) => {
+      if (toastId === null) return;
+      update(toastId, {
+        message: `${version} ready to install. Restart to apply.`,
+        progress: undefined,
+        action: {
+          label: 'Restart',
+          run: () => void runner().update.install(),
+        },
+      });
+    });
+
+    const offError = runner().update.onError(({ message }) => {
+      if (toastId !== null) {
+        dismiss(toastId);
+        toastId = null;
+      }
+      push('error', `Update failed: ${message}`);
+    });
+
     const offNone = runner().update.onUpToDate(({ version }) => {
       push('success', `You're on the latest version (${version}).`);
     });
+
     return () => {
       offAvail();
+      offProgress();
+      offDownloaded();
+      offError();
       offNone();
     };
   }, []);

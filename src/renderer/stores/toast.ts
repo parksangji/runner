@@ -14,16 +14,20 @@ export interface Toast {
   action?: ToastAction;
   /** Sticky toasts never auto-expire (e.g. an update prompt). */
   sticky?: boolean;
+  /** 0–100; when set, the toast renders a progress bar. */
+  progress?: number;
 }
 
 export interface ToastOptions {
   action?: ToastAction;
   sticky?: boolean;
+  progress?: number;
 }
 
 interface ToastState {
   toasts: Toast[];
-  push: (kind: ToastKind, message: string, opts?: ToastOptions) => void;
+  push: (kind: ToastKind, message: string, opts?: ToastOptions) => number;
+  update: (id: number, patch: Partial<Omit<Toast, 'id'>>) => void;
   dismiss: (id: number) => void;
 }
 
@@ -35,12 +39,31 @@ export const useToasts = create<ToastState>((set, get) => ({
   push(kind, message, opts) {
     const id = nextId++;
     set((s) => ({
-      toasts: [...s.toasts, { id, kind, message, action: opts?.action, sticky: opts?.sticky }],
+      toasts: [
+        ...s.toasts,
+        {
+          id,
+          kind,
+          message,
+          action: opts?.action,
+          sticky: opts?.sticky,
+          progress: opts?.progress,
+        },
+      ],
     }));
     // Errors and sticky toasts linger until dismissed; transient kinds expire.
     if (kind !== 'error' && !opts?.sticky) {
       setTimeout(() => get().dismiss(id), AUTO_DISMISS_MS);
     }
+    return id;
+  },
+  update(id, patch) {
+    // Lets long-running flows (e.g. the update download → install handshake)
+    // morph a single sticky toast through its states instead of stacking
+    // multiple toasts on top of each other.
+    set((s) => ({
+      toasts: s.toasts.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+    }));
   },
   dismiss(id) {
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));

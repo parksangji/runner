@@ -52,8 +52,13 @@ interface RunnerApi {
     check: () => Promise<void>;
     open: (url: string) => Promise<void>;
     version: () => Promise<string>;
+    download: () => Promise<void>;
+    install: () => Promise<void>;
     onAvailable: (cb: (info: UpdateInfo) => void) => () => void;
     onUpToDate: (cb: (info: { version: string }) => void) => () => void;
+    onProgress: (cb: (p: { downloaded: number; total: number; percent: number }) => void) => () => void;
+    onDownloaded: (cb: (info: { version: string }) => void) => () => void;
+    onError: (cb: (info: { message: string }) => void) => () => void;
   };
   platform: NodeJS.Platform;
   env: { home: string; shell: string };
