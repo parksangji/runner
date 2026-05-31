@@ -152,6 +152,22 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
     // restore bottom-stickiness and force a full row repaint.
     let wasVisible = true;
     let stuckToBottom = true;
+    // Track bottom-stickiness continuously while the terminal is actually on
+    // screen. We can't snapshot it on the way out: by the time the resize
+    // observer fires for the collapse, the browser has already zeroed scrollTop
+    // on the 0-height viewport, so viewportY reads 0 and looks un-stuck. The
+    // height guard drops the spurious scroll-to-top that the collapse itself
+    // emits, so the last value recorded here is the genuine pre-hide state.
+    const onScroll = term.onScroll(() => {
+      if (!isAlive() || !host.isConnected) return;
+      if (host.getBoundingClientRect().height < 20) return;
+      try {
+        const buf = term.buffer.active;
+        stuckToBottom = buf.viewportY >= buf.baseY;
+      } catch {
+        /* buffer not ready */
+      }
+    });
     const onResize = (): void => {
       if (pendingResize || !isAlive()) return;
       pendingResize = true;
@@ -161,27 +177,14 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
         const rect = host.getBoundingClientRect();
         const visible = rect.width >= 20 && rect.height >= 20;
         if (!visible) {
-          // Snapshot bottom-stickiness on the way out — once the container
-          // collapses, viewportY drifts toward 0 and we can't tell anymore.
-          if (wasVisible) {
-            try {
-              const buf = term.buffer.active;
-              stuckToBottom = buf.viewportY >= buf.baseY;
-            } catch {
-              stuckToBottom = true;
-            }
-            wasVisible = false;
-          }
+          // Just mark hidden — stuckToBottom already holds the last value the
+          // onScroll tracker recorded while we were genuinely on screen.
+          wasVisible = false;
           return;
         }
         try {
           // Maximizing/restoring a group reflows every other terminal; without
           // this, the row-count change can strand the viewport mid-scrollback.
-          // Use the snapshot from the hidden transition; otherwise probe now.
-          if (wasVisible) {
-            const buf = term.buffer.active;
-            stuckToBottom = buf.viewportY >= buf.baseY;
-          }
           fit.fit();
           runner().daemon.resize(sessionId, term.cols, term.rows);
           // Hidden→visible: fit() is a no-op when cols/rows haven't changed,
@@ -257,6 +260,11 @@ export function TerminalView({ sessionId }: Props): JSX.Element {
       host.removeEventListener('mousedown', onPaneDown);
       ro.disconnect();
       offEvent();
+      try {
+        onScroll.dispose();
+      } catch {
+        /* ignore */
+      }
       try {
         onInput.dispose();
       } catch {
